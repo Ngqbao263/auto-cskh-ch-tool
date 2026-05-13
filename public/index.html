@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SDVICO — Hệ thống nhập liệu tự động</title>
+
+    <!-- Fonts: Syne (display) + JetBrains Mono (data inputs) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500&display=swap"
+        rel="stylesheet" />
+
+    <style>
+        /* ─── DESIGN TOKENS ──────────────────────────────────────────────── */
+        :root {
+            --navy-950: #050c1a;
+            --navy-900: #0a1628;
+            --navy-800: #0f2044;
+            --navy-700: #142858;
+            --navy-600: #1a3370;
+            --steel: #2a4a7f;
+            --steel-lt: #3d6099;
+            --amber: #f59e0b;
+            --amber-lt: #fbbf24;
+            --amber-dk: #d97706;
+            --teal: #0d9488;
+            --teal-lt: #14b8a6;
+            --danger: #ef4444;
+            --success: #10b981;
+            --text-1: #e2e8f0;
+            --text-2: #94a3b8;
+            --text-3: #64748b;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-focus: rgba(245, 158, 11, 0.6);
+            --glass: rgba(10, 22, 40, 0.7);
+            --radius: 6px;
+        }
+
+        /* ─── RESET & BASE ───────────────────────────────────────────────── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            background-color: var(--navy-950);
+            background-image:
+                radial-gradient(ellipse 80% 50% at 20% -10%, rgba(20, 40, 88, 0.7) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 110%, rgba(13, 148, 136, 0.12) 0%, transparent 55%),
+                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M0 60L60 0M-10 10L10 -10M50 70L70 50' stroke='rgba(255,255,255,0.018)' stroke-width='1'/%3E%3C/svg%3E");
+            font-family: 'Inter', sans-serif;
+            color: var(--text-1);
+            overflow-x: hidden;
+        }
+
+        /* ─── SCAN LINE OVERLAY ──────────────────────────────────────────── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.03) 2px,
+                    rgba(0, 0, 0, 0.03) 4px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ─── LAYOUT ─────────────────────────────────────────────────────── */
+        .wrapper {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 4rem;
+        }
+
+        /* ─── HEADER ─────────────────────────────────────────────────────── */
+        .site-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2.5rem;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .brand-icon {
+            width: 48px;
+            height: 48px;
+            flex-shrink: 0;
+            overflow: hidden;
+            border-radius: var(--radius);
+        }
+
+        .brand-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .brand-text {}
+
+        .brand-title {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 1.35rem;
+            letter-spacing: -0.02em;
+            color: var(--text-1);
+            line-height: 1;
+        }
+
+        .brand-sub {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--amber);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .header-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: 100px;
+            padding: 4px 12px;
+            font-size: 0.72rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--success);
+            letter-spacing: 0.06em;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.5;
+                transform: scale(0.8);
+            }
+        }
+
+        .target-badges {
+            display: flex;
+            gap: 6px;
+        }
+
+        .badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .badge-cskh {
+            background: rgba(20, 184, 166, 0.15);
+            color: var(--teal-lt);
+            border: 1px solid rgba(20, 184, 166, 0.3);
+        }
+
+        .badge-viettel {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--amber);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        /* ─── SECTION CARDS ───────────────────────────────────────────────── */
+        .section-card {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 1.25rem;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+        .section-card:focus-within {
+            border-color: rgba(245, 158, 11, 0.2);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.25rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .section-header:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .section-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .icon-ship {
+            background: rgba(20, 184, 166, 0.15);
+        }
+
+        .icon-owner {
+            background: rgba(245, 158, 11, 0.15);
+        }
+
+        .icon-captain {
+            background: rgba(139, 92, 246, 0.15);
+        }
+
+        .icon-request {
+            background: rgba(59, 130, 246, 0.15);
+        }
+
+        .icon-payment {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .section-title {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 0.875rem;
+            letter-spacing: 0.03em;
+            color: var(--text-1);
+            flex: 1;
+        }
+
+        .section-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-3);
+        }
+
+        .section-chevron {
+            font-size: 0.65rem;
+            color: var(--text-3);
+            transition: transform 0.2s;
+        }
+
+        .section-card.collapsed .section-chevron {
+            transform: rotate(-90deg);
+        }
+
+        .section-card.collapsed .section-body {
+            display: none;
+        }
+
+        .section-body {
+            padding: 1.25rem;
+        }
+
+        /* ─── FORM GRID ───────────────────────────────────────────────────── */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 0.875rem;
+        }
+
+        .form-grid.cols-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .form-grid.cols-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .field-group.full {
+            grid-column: 1 / -1;
+        }
+
+        .field-group.half {
+            grid-column: span 2;
+        }
+
+        label {
+            font-size: 0.7rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-3);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        label .req {
+            color: var(--amber);
+            font-size: 0.7rem;
+        }
+
+        label .hint {
+            font-size: 0.6rem;
+            color: var(--text-3);
+            text-transform: none;
+            letter-spacing: 0;
+            font-weight: 400;
+            margin-left: auto;
+            opacity: 0.7;
+        }
+
+        /* ─── INPUTS ─────────────────────────────────────────────────────── */
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        input[type="email"],
+        select {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius);
+            color: var(--text-1);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            padding: 0.55rem 0.75rem;
+            outline: none;
+            transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        input[type="date"] {
+            color-scheme: dark;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--amber);
+            background: rgba(245, 158, 11, 0.05);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+        }
+
+        input::placeholder {
+            color: var(--text-3);
+            opacity: 0.7;
+            font-size: 0.75rem;
+        }
+
+        input[data-required="true"]:not(:placeholder-shown):invalid {
+            border-color: var(--danger);
+        }
+
+        input[data-required="true"]:not(:placeholder-shown):valid {
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748b'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            padding-right: 2rem;
+            cursor: pointer;
+        }
+
+        select option {
+            background: var(--navy-900);
+            color: var(--text-1);
+        }
+
+        /* ─── TOGGLE SWITCH ──────────────────────────────────────────────── */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.6rem 0.75rem;
+        }
+
+        .toggle-label {
+            font-size: 0.78rem;
+            color: var(--text-2);
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 38px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            left: 3px;
+            top: 3px;
+            width: 14px;
+            height: 14px;
+            background: var(--text-2);
+            border-radius: 50%;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .toggle-switch input:checked+.toggle-slider {
+            background: var(--amber);
+        }
+
+        .toggle-switch input:checked+.toggle-slider::before {
+            transform: translateX(18px);
+            background: white;
+        }
+
+        /* Section conditionally hidden when toggle active */
+        .captain-fields,
+        .requester-fields {
+            transition: opacity 0.2s;
+        }
+
+        .captain-fields.dimmed,
+        .requester-fields.dimmed {
+            opacity: 0.35;
+            pointer-events: none;
+        }
+
+        /* ─── PROMO CONDITIONAL ──────────────────────────────────────────── */
+        #gia_tri_khuyen_mai_group {
+            transition: opacity 0.2s, transform 0.2s;
+            opacity: 0.35;
+            pointer-events: none;
+        }
+
+        #gia_tri_khuyen_mai_group.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* ─── DIVIDER ─────────────────────────────────────────────────────── */
+        .sub-divider {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin: 1rem 0 0.75rem;
+        }
+
+        .sub-divider-line {
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .sub-divider-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.62rem;
+            color: var(--text-3);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        /* ─── ACTION BAR ─────────────────────────────────────────────────── */
+        .action-bar {
+            position: sticky;
+            bottom: 0;
+            background: linear-gradient(to top, var(--navy-950) 70%, transparent);
+            padding: 1.5rem 0 0;
+            margin-top: 2rem;
+        }
+
+        .action-inner {
+            background: var(--navy-900);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .action-info {
+            flex: 1;
+            min-width: 160px;
+        }
+
+        .action-info-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--text-1);
+        }
+
+        .action-info-sub {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-3);
+            margin-top: 2px;
+            letter-spacing: 0.04em;
+        }
+
+        .btn-run {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: linear-gradient(135deg, var(--amber) 0%, var(--amber-dk) 100%);
+            color: var(--navy-950);
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 0.875rem;
+            letter-spacing: 0.03em;
+            border: none;
+            border-radius: var(--radius);
+            padding: 0.7rem 1.5rem;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+            white-space: nowrap;
+            box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-run:hover:not(:disabled) {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(245, 158, 11, 0.4);
+        }
+
+        .btn-run:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-run:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-logs {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: transparent;
+            color: var(--text-3);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.06em;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.7rem 1rem;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        .btn-logs:hover {
+            color: var(--text-1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* ─── SPINNER ─────────────────────────────────────────────────────── */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(10, 22, 40, 0.4);
+            border-top-color: var(--navy-950);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ─── RESULT PANEL ───────────────────────────────────────────────── */
+        #result-panel {
+            margin-top: 1.25rem;
+            border-radius: 10px;
+            overflow: hidden;
+            display: none;
+        }
+
+        #result-panel.visible {
+            display: block;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1.25rem;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 0.875rem;
+        }
+
+        .result-header.success {
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-bottom: none;
+        }
+
+        .result-header.partial {
+            background: rgba(245, 158, 11, 0.10);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            border-bottom: none;
+        }
+
+        .result-header.error {
+            background: rgba(239, 68, 68, 0.10);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            border-bottom: none;
+        }
+
+        .result-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+        }
+
+        @media (max-width: 600px) {
+            .result-body {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .result-item {
+            padding: 1rem 1.25rem;
+            border: 1px solid var(--border);
+            border-top: none;
+        }
+
+        .result-item:first-child {
+            border-right-color: var(--border);
+        }
+
+        .result-item-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .result-target-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-2);
+        }
+
+        .result-badge-ok {
+            color: var(--success);
+            font-size: 0.9rem;
+        }
+
+        .result-badge-err {
+            color: var(--danger);
+            font-size: 0.9rem;
+        }
+
+        .result-message {
+            font-size: 0.78rem;
+            color: var(--text-2);
+            line-height: 1.5;
+        }
+
+        .result-error {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--danger);
+            margin-top: 0.35rem;
+            word-break: break-word;
+            line-height: 1.5;
+        }
+
+        .result-duration {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-3);
+            margin-top: 0.35rem;
+        }
+
+        .result-total {
+            padding: 0.6rem 1.25rem;
+            border: 1px solid var(--border);
+            border-top: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-3);
+            display: flex;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* ─── PROGRESS INDICATOR ─────────────────────────────────────────── */
+        #progress-bar-wrap {
+            height: 2px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 0.75rem;
+            display: none;
+        }
+
+        #progress-bar-wrap.visible {
+            display: block;
+        }
+
+        #progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--teal) 0%, var(--amber) 100%);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.4s ease;
+            animation: progress-shimmer 2s linear infinite;
+            background-size: 200% 100%;
+        }
+
+        @keyframes progress-shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        /* ─── LOG MODAL ──────────────────────────────────────────────────── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 12, 26, 0.85);
+            backdrop-filter: blur(6px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            background: var(--navy-900);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            width: 100%;
+            max-width: 680px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            transform: translateY(12px);
+            transition: transform 0.2s;
+        }
+
+        .modal-overlay.open .modal-box {
+            transform: translateY(0);
+        }
+
+        .modal-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 0.875rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-3);
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 4px;
+            transition: color 0.15s;
+        }
+
+        .modal-close:hover {
+            color: var(--text-1);
+        }
+
+        .modal-body {
+            overflow-y: auto;
+            padding: 1rem 1.25rem;
+            flex: 1;
+        }
+
+        .log-entry {
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 0.6rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+        }
+
+        .log-ts {
+            color: var(--text-3);
+            margin-bottom: 4px;
+        }
+
+        .log-ship {
+            color: var(--amber);
+        }
+
+        .log-ok {
+            color: var(--success);
+        }
+
+        .log-err {
+            color: var(--danger);
+        }
+
+        /* ─── RESPONSIVE ─────────────────────────────────────────────────── */
+        @media (max-width: 720px) {
+
+            .form-grid,
+            .form-grid.cols-3 {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .form-grid.cols-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .site-header {
+                flex-direction: column;
+            }
+
+            .result-body {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+
+            .form-grid,
+            .form-grid.cols-2,
+            .form-grid.cols-3 {
+                grid-template-columns: 1fr;
+            }
+
+            .wrapper {
+                padding: 1rem 1rem 3rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+
+        <!-- ── HEADER ─────────────────────────────────────────────────────────── -->
+        <header class="site-header">
+            <div class="header-brand">
+                <div class="brand-icon"><img src="logo-sdvico.jpg" alt=""></div>
+                <div class="brand-text">
+                    <div class="brand-title">SDVICO</div>
+                    <div class="brand-sub">Hệ thống nhập liệu tự động</div>
+                </div>
+            </div>
+            <div class="header-meta">
+                <div class="status-pill">
+                    <span class="status-dot"></span>
+                    SẴN SÀNG
+                </div>
+                <div class="target-badges">
+                    <span class="badge badge-cskh">CSKH</span>
+                    <span class="badge badge-viettel">Cấu hình</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ── SECTION 1: THÔNG TIN TÀU ──────────────────────────────────────── -->
+        <div class="section-card" id="sec-ship">
+            <div class="section-header" onclick="toggleSection('sec-ship')">
+                <div class="section-icon icon-ship">🚢</div>
+                <div class="section-title">Thông tin tàu</div>
+                <span class="section-count">25 trường</span>
+                <span class="section-chevron">▼</span>
+            </div>
+            <div class="section-body">
+
+                <!-- Row: Mã tàu + Serial -->
+                <div class="form-grid cols-2">
+                    <div class="field-group">
+                        <label for="ship_code">Mã tàu <span class="req">*</span></label>
+                        <input type="text" id="ship_code" placeholder="VD: TB-12345-TS" required data-required="true"
+                            oninput="syncField('ship_code','bien_so_tau')" />
+                    </div>
+                    <div class="field-group">
+                        <label for="serial_number">Serial Number <span class="req">*</span></label>
+                        <input type="text" id="serial_number" placeholder="VD: MTR032019M009186" required
+                            data-required="true" />
+                    </div>
+                </div>
+
+                <div class="sub-divider">
+                    <div class="sub-divider-line"></div><span class="sub-divider-label">Định danh tàu</span>
+                    <div class="sub-divider-line"></div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="field-group">
+                        <label for="bien_so_tau">Biển số tàu <span class="req">*</span></label>
+                        <input type="text" id="bien_so_tau" placeholder="VD: TB-12345-TS" required
+                            data-required="true" />
+                    </div>
+                    <div class="field-group">
+                        <label for="co_hieu">Cờ hiệu <label class="hint">tuỳ chọn</label></label>
+                        <input type="text" id="co_hieu" placeholder="VD: VN" value="CMA1" />
+                    </div>
+                    <div class="field-group">
+                        <label for="ho_hieu">Hô hiệu <label class="hint">tuỳ chọn</label></label>
+                        <input type="text" id="ho_hieu" placeholder="VD: XVFA" value="CMA2" />
+                    </div>
+                    <div class="field-group">
+                        <label for="imo">IMO <label class="hint">tuỳ chọn</label></label>
+                        <input type="text" id="imo" placeholder="VD: 1234567" value="0" />
+                    </div>
+                    <div class="field-group">
+                        <label for="ma_nganh_nghe">Mã ngành nghề <span class="req">*</span></label>
+                        <input type="text" id="ma_nganh_nghe" placeholder="VD: TX" required data-required="true" />
+                    </div>
+                    <div class="field-group">
+                        <label for="loai_tau">Loại tàu <label class="hint">tuỳ chọn</label></label>
+                        <input type="text" id="loai_tau" placeholder="VD: TACA" value="TACA" />
+                    </div>
+                </div>
+
+                <div class="sub-divider">
+                    <div class="sub-divider-line"></div><span class="sub-divider-label">Cảng & Vị trí</span>
+                    <div class="sub-divider-line"></div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="field-group">
+                        <label for="ma_cang">Mã cảng <span class="req">*</span></label>
+                        <input type="text" id="ma_cang" placeholder="VD: SGN" required data-required="true"
+                            oninput="syncField('ma_cang','ma_cang_phu')" />
+                    </div>
+                    <div class="field-group">
+                        <label for="ma_cang_phu">Mã cảng phụ <span class="req">*</span></label>
+                        <input type="text" id="ma_cang_phu" placeholder="VD: SGN2" required data-required="true" />
+                    </div>
+                    <div class="field-group">
+                        <label for="tinh_thanh">Tỉnh thành <span class="req">*</span></label>
+                        <input type="text" id="tinh_thanh" placeholder="VD: SG" required data-required="true" />
+                    </div>
+                </div>
+
+                <div class="sub-divider">
+                    <div class="sub-divider-line"></div><span class="sub-divider-label">Thông số kỹ thuật</span>
+                    <div class="sub-divider-line"></div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="field-group">
+                        <label for="tong_tai_trong">Tổng tải trọng (tấn) <span class="req">*</span></label>
+                        <input type="number" id="tong_tai_trong" placeholder="VD: 120" min="0" step="0.1" required
+                            data-required="true" value="0" />
+                    </div>
+                    <div class="field-group">
+                        <label for="chieu_dai_toan_bo">Chiều dài toàn bộ (m) <span class="req">*</span></label>
+                        <input type="number" id="chieu_dai_toan_bo" placeholder="VD: 25.5" min="0" step="0.01" required
+                            data-required="true" value="0" />
+                    </div>
+                    <div class="field-group">
+                        <label for="chieu_dai_thiet_ke">Chiều dài TK (m) <label class="hint">tuỳ chọn</label></label>
+                        <input type="number" id="chieu_dai_thiet_ke" placeholder="VD: 23.0" min="0" step="0.01"
+                            value="0" />
+                    </div>
+                    <div class="field-group">
+                        <label for="chieu_rong">Chiều rộng (m) <span class="req">*</span></label>
+                        <input type="number" id="chieu_rong" placeholder="VD: 6.5" min="0" step="0.01" required
+                            data-required="true" value="0" />
+                    </div>
+                    <div class="field-group">
+                        <label for="mon_nuoc">Mớn nước (m) <span class="req">*</span></label>
+                        <input type="number" id="mon_nuoc" placeholder="VD: 2.1" min="0" step="0.01" required
+                            data-required="true" value="0" />
+                    </div>
+                    <div class="field-group">
+                        <label for="cong_suat">Công suất (CV) <span class="req">*</span></label>
+                        <input type="number" id="cong_suat" placeholder="VD: 450" min="0" required data-required="true"
+                            value="0" />
+                    </div>
+                    <div class="field-group">
+                        <label for="so_thuyen_vien">Số thuyền viên <span class="req">*</span></label>
+                        <input type="number" id="so_thuyen_vien" placeholder="VD: 8" min="1" required
+                            data-required="true" value="8" />
+                    </div>
+                    <div class="field-group">
+                        <label for="dung_tich_ham_ca">Dung tích hầm cá (m³) <span class="req">*</span></label>
+                        <input type="number" id="dung_tich_ham_ca" placeholder="VD: 30" min="0" step="0.1" required
+                            data-required="true" value="0" />
+                    </div>
+                    <div class="field-group">
+                        <label for="van_toc_danh_bat">Vận tốc đánh bắt (kn) <span class="req">*</span></label>
+                        <input type="number" id="van_toc_danh_bat" placeholder="VD: 5.5" min="0" step="0.1" required
+                            data-required="true" value="0" />
+                    </div>
+                    <div class="field-group">
+                        <label for="van_toc_tu_do">Vận tốc tự do (kn) <label class="hint">tuỳ chọn</label></label>
+                        <input type="number" id="van_toc_tu_do" placeholder="VD: 10.0" min="0" step="0.1" value="0" />
+                    </div>
+                    <div class="field-group">
+                        <label for="toc_do_toi_da">Tốc độ tối đa (kn) <span class="req">*</span></label>
+                        <input type="number" id="toc_do_toi_da" placeholder="VD: 12.0" min="0" step="0.1" required
+                            data-required="true" value="0" />
+                    </div>
+                </div>
+
+                <div class="sub-divider">
+                    <div class="sub-divider-line"></div><span class="sub-divider-label">Thông tin liên lạc tàu</span>
+                    <div class="sub-divider-line"></div>
+                </div>
+
+                <div class="form-grid cols-3">
+                    <div class="field-group">
+                        <label for="tan_so_vhf">Tần số VHF <span class="req">*</span></label>
+                        <input type="text" id="tan_so_vhf" placeholder="VD: CH16" required data-required="true"
+                            value="120hz" />
+                    </div>
+                    <div class="field-group">
+                        <label for="tan_so_hf">Tần số HF <span class="req">*</span></label>
+                        <input type="text" id="tan_so_hf" placeholder="VD: 8291kHz" required data-required="true"
+                            value="120hz" />
+                    </div>
+                    <div class="field-group">
+                        <label for="so_di_dong">Số di động tàu <span class="req">*</span></label>
+                        <input type="text" id="so_di_dong" placeholder="VD: 0901234567" required data-required="true"
+                            oninput="syncField('so_di_dong','owner_phone'); syncField('so_di_dong','owner_fax'); syncEmail('so_di_dong')" />
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ── SECTION 2: THÔNG TIN CHỦ TÀU ─────────────────────────────────── -->
+        <div class="section-card" id="sec-owner">
+            <div class="section-header" onclick="toggleSection('sec-owner')">
+                <div class="section-icon icon-owner">👤</div>
+                <div class="section-title">Thông tin chủ tàu</div>
+                <span class="section-count">7 trường</span>
+                <span class="section-chevron">▼</span>
+            </div>
+            <div class="section-body">
+                <div class="form-grid">
+                    <div class="field-group">
+                        <label for="owner_name">Tên chủ tàu <span class="req">*</span></label>
+                        <input type="text" id="owner_name" placeholder="VD: Nguyễn Văn An" required
+                            data-required="true" />
+                    </div>
+                    <div class="field-group">
+                        <label for="owner_phone">SĐT chủ tàu <span class="req">*</span></label>
+                        <input type="text" id="owner_phone" placeholder="VD: 0901234567" required data-required="true"
+                            oninput="syncEmail('owner_phone')" />
+                    </div>
+                    <div class="field-group">
+                        <label for="owner_cccd">CCCD chủ tàu <span class="req">*</span></label>
+                        <input type="text" id="owner_cccd" placeholder="VD: 012345678901" required data-required="true"
+                            oninput="syncCccdType('owner_cccd','owner_loai_ma_so')" />
+                    </div>
+                    <div class="field-group">
+                        <label for="owner_loai_ma_so">Loại mã số <span class="req">*</span></label>
+                        <select id="owner_loai_ma_so" required data-required="true">
+                            <option value="">-- Chọn --</option>
+                            <option value="1">CMND</option>
+                            <option value="2">CCCD</option>
+                            <option value="3">Mã định danh cá nhân</option>
+                            <option value="4">Mã doanh nghiệp</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label for="owner_fax">Số Fax chủ tàu <span class="req">*</span></label>
+                        <input type="text" id="owner_fax" placeholder="VD: 02363112233" required data-required="true" />
+                    </div>
+                    <div class="field-group">
+                        <label for="owner_email">Email chủ tàu <span class="req">*</span></label>
+                        <input type="email" id="owner_email" placeholder="VD: owner@gmail.com" required
+                            data-required="true" />
+                    </div>
+                    <div class="field-group full">
+                        <label for="owner_address">Địa chỉ chủ tàu <span class="req">*</span></label>
+                        <input type="text" id="owner_address" placeholder="VD: 123 Đường Biển, TP Quảng Ngãi" required
+                            data-required="true" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── SECTION 3: THUYỀN TRƯỞNG ─────────────────────────────────────── -->
+        <div class="section-card" id="sec-captain">
+            <div class="section-header" onclick="toggleSection('sec-captain')">
+                <div class="section-icon icon-captain">🧭</div>
+                <div class="section-title">Thông tin thuyền trưởng</div>
+                <span class="section-count">7 trường</span>
+                <span class="section-chevron">▼</span>
+            </div>
+            <div class="section-body">
+                <div class="field-group" style="margin-bottom:1rem;">
+                    <div class="toggle-row">
+                        <span class="toggle-label">Thuyền trưởng là Chủ tàu → Tự động copy dữ liệu</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="captain_is_owner" onchange="handleCaptainToggle(this)" />
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="captain-fields form-grid" id="captain-fields-grid">
+                    <div class="field-group">
+                        <label for="captain_name">Tên thuyền trưởng <span class="req">*</span></label>
+                        <input type="text" id="captain_name" placeholder="VD: Trần Văn Bình" required
+                            data-required="true" />
+                    </div>
+                    <div class="field-group">
+                        <label for="captain_phone">SĐT thuyền trưởng <span class="req">*</span></label>
+                        <input type="text" id="captain_phone" placeholder="VD: 0912345678" required data-required="true"
+                            oninput="syncField('captain_phone','captain_fax')" />
+                    </div>
+                    <div class="field-group">
+                        <label for="captain_cccd">CCCD thuyền trưởng <span class="req">*</span></label>
+                        <input type="text" id="captain_cccd" placeholder="VD: 098765432100" required
+                            data-required="true" />
+                    </div>
+                    <div class="field-group">
+                        <label for="captain_gender">Giới tính <label class="hint">tuỳ chọn</label></label>
+                        <input type="text" id="captain_gender" placeholder="VD: Nam" />
+                    </div>
+                    <div class="field-group">
+                        <label for="captain_fax">Số Fax thuyền trưởng <span class="req">*</span></label>
+                        <input type="text" id="captain_fax" placeholder="VD: 02363445566" required
+                            data-required="true" />
+                    </div>
+                    <div class="field-group full">
+                        <label for="captain_address">Địa chỉ thuyền trưởng <span class="req">*</span></label>
+                        <input type="text" id="captain_address" placeholder="VD: 45 Đường Cảng, TP Quảng Ngãi" required
+                            data-required="true" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── SECTION 4: NGƯỜI YÊU CẦU ─────────────────────────────────────── -->
+        <div class="section-card" id="sec-request">
+            <div class="section-header" onclick="toggleSection('sec-request')">
+                <div class="section-icon icon-request">📋</div>
+                <div class="section-title">Người yêu cầu</div>
+                <span class="section-count">2 trường</span>
+                <span class="section-chevron">▼</span>
+            </div>
+            <div class="section-body">
+                <div class="field-group" style="margin-bottom:1rem;">
+                    <div class="toggle-row">
+                        <span class="toggle-label">Người yêu cầu là Chủ tàu</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="requester_is_owner" onchange="handleRequesterToggle(this)" />
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="requester-fields" id="requester-name-group">
+                    <div class="field-group">
+                        <label for="requester_name">Tên người yêu cầu <span class="req">*</span></label>
+                        <input type="text" id="requester_name" placeholder="VD: Nguyễn Văn An" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── SECTION 5: THANH TOÁN ─────────────────────────────────────────── -->
+        <div class="section-card" id="sec-payment">
+            <div class="section-header" onclick="toggleSection('sec-payment')">
+                <div class="section-icon icon-payment">💳</div>
+                <div class="section-title">Thông tin thanh toán</div>
+                <span class="section-count">3 trường</span>
+                <span class="section-chevron">▼</span>
+            </div>
+            <div class="section-body">
+                <div class="form-grid cols-3">
+                    <div class="field-group">
+                        <label for="so_thang">Số tháng <span class="req">*</span>
+                            <span class="hint">mặc định 3</span>
+                        </label>
+                        <input type="number" id="so_thang" value="3" min="1" max="36" required data-required="true" />
+                    </div>
+                    <div class="field-group">
+                        <label for="loai_khuyen_mai">Loại khuyến mãi</label>
+                        <select id="loai_khuyen_mai" onchange="handlePromoChange(this)">
+                            <option value="none">Không có</option>
+                            <option value="fixed">Tiền mặt (VNĐ)</option>
+                            <option value="percent">Phần trăm (%)</option>
+                            <option value="month">Tặng tháng</option>
+                        </select>
+                    </div>
+                    <div class="field-group" id="gia_tri_khuyen_mai_group">
+                        <label for="gia_tri_khuyen_mai">Giá trị KM
+                            <span class="hint" id="km-unit-hint">VNĐ</span>
+                        </label>
+                        <input type="number" id="gia_tri_khuyen_mai" placeholder="Nhập giá trị" min="0" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── ACTION BAR + RESULT ───────────────────────────────────────────── -->
+        <div class="action-bar">
+            <div id="progress-bar-wrap">
+                <div id="progress-bar"></div>
+            </div>
+
+            <div class="action-inner">
+                <div class="action-info">
+                    <div class="action-info-title">Sẵn sàng tự động hóa</div>
+                    <div class="action-info-sub" id="action-sub">Điền form và nhấn nút để bắt đầu</div>
+                </div>
+                <button class="btn-logs" onclick="openLogsModal()" title="Xem lịch sử">
+                    📂 Lịch sử
+                </button>
+                <button class="btn-run" id="btn-run" onclick="runAutomation()">
+                    <span id="btn-icon">⚡</span>
+                    <span id="btn-label">Bắt đầu Auto</span>
+                </button>
+            </div>
+
+            <!-- Result Panel -->
+            <div id="result-panel">
+                <div class="result-header" id="result-header">
+                    <span id="result-header-icon"></span>
+                    <span id="result-header-text"></span>
+                </div>
+                <div class="result-body">
+                    <div class="result-item">
+                        <div class="result-item-header">
+                            <span class="result-target-name">CSKH (SDVICO)</span>
+                            <span id="cskh-badge"></span>
+                        </div>
+                        <div class="result-message" id="cskh-message"></div>
+                        <div class="result-error" id="cskh-error" style="display:none"></div>
+                        <div class="result-duration" id="cskh-duration"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-item-header">
+                            <span class="result-target-name">Cấu hình (Viettel)</span>
+                            <span id="cauhinh-badge"></span>
+                        </div>
+                        <div class="result-message" id="cauhinh-message"></div>
+                        <div class="result-error" id="cauhinh-error" style="display:none"></div>
+                        <div class="result-duration" id="cauhinh-duration"></div>
+                    </div>
+                </div>
+                <div class="result-total">
+                    <span id="result-log-file"></span>
+                    <span id="result-total-time"></span>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /wrapper -->
+
+    <!-- ── LOG MODAL ──────────────────────────────────────────────────────────── -->
+    <div class="modal-overlay" id="log-modal" onclick="closeLogsModal(event)">
+        <div class="modal-box">
+            <div class="modal-head">
+                <div class="modal-title">📂 Lịch sử chạy gần nhất</div>
+                <button class="modal-close" onclick="closeLogsModalDirect()">✕</button>
+            </div>
+            <div class="modal-body" id="log-modal-body">
+                <div style="color:var(--text-3);font-size:0.8rem;text-align:center;padding:2rem;">Đang tải...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────────────────────
+     JAVASCRIPT
+────────────────────────────────────────────────────────────────────────── -->
+    <script>
+        // ── Section collapse/expand ──────────────────────────────────────────────────
+        function toggleSection(id) {
+            document.getElementById(id).classList.toggle('collapsed');
+        }
+
+        // ── Auto-sync: copy giá trị từ field nguồn sang field đích khi người dùng gõ ──
+        function syncField(srcId, dstId) {
+            const dst = document.getElementById(dstId);
+            if (dst) dst.value = document.getElementById(srcId).value;
+        }
+
+        // ── Auto-sync email: lấy giá trị từ srcId + "@gmail.com" → owner_email ────────
+        function syncEmail(srcId) {
+            const src = document.getElementById(srcId);
+            const dst = document.getElementById('owner_email');
+            if (src && dst) dst.value = src.value ? src.value + '@gmail.com' : '';
+        }
+
+        // ── Auto-select Loại mã số dựa trên độ dài CCCD ─────────────────────────────
+        // 9 ký tự số → CMND (value "1"), 12 ký tự số → CCCD (value "2"), khác → giữ nguyên
+        function syncCccdType(cccdId, selectId) {
+            const len = (document.getElementById(cccdId)?.value || '').replace(/\D/g, '').length;
+            const sel = document.getElementById(selectId);
+            if (!sel) return;
+            if (len === 9) sel.value = '1'; // CMND
+            else if (len === 12) sel.value = '2'; // CCCD
+            // Ngoài 2 trường hợp trên: không thay đổi, để người dùng tự chọn
+        }
+
+        // ── Toggle: Captain is Owner ─────────────────────────────────────────────────
+        function handleCaptainToggle(cb) {
+            const grid = document.getElementById('captain-fields-grid');
+            if (cb.checked) {
+                grid.classList.add('dimmed');
+                // Clear fields khi toggle on (sẽ được copy tự động bởi engine)
+                ['captain_name', 'captain_phone', 'captain_cccd', 'captain_address', 'captain_gender', 'captain_fax']
+                    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            } else {
+                grid.classList.remove('dimmed');
+            }
+        }
+
+        // ── Toggle: Requester is Owner ───────────────────────────────────────────────
+        function handleRequesterToggle(cb) {
+            const grp = document.getElementById('requester-name-group');
+            if (cb.checked) {
+                grp.classList.add('dimmed');
+                document.getElementById('requester_name').value = '';
+            } else {
+                grp.classList.remove('dimmed');
+            }
+        }
+
+        // ── Promo type change ────────────────────────────────────────────────────────
+        function handlePromoChange(sel) {
+            const grp = document.getElementById('gia_tri_khuyen_mai_group');
+            const hint = document.getElementById('km-unit-hint');
+            const isNone = sel.value === 'none';
+            grp.classList.toggle('active', !isNone);
+            if (!isNone) {
+                const units = { fixed: 'VNĐ', percent: '%', month: 'Tháng' };
+                hint.textContent = units[sel.value] || '';
+                document.getElementById('gia_tri_khuyen_mai').focus();
+            }
+        }
+
+        // ── Collect masterData from form ─────────────────────────────────────────────
+        function collectMasterData() {
+            const g = (id) => {
+                const el = document.getElementById(id);
+                if (!el) return null;
+                if (el.type === 'checkbox') return el.checked;
+                const v = el.value.trim();
+                if (el.type === 'number') return v === '' ? null : Number(v);
+                return v || null;
+            };
+
+            return {
+                // Ship info
+                ship_code: g('ship_code'),
+                serial_number: g('serial_number'),
+                bien_so_tau: g('bien_so_tau'),
+                co_hieu: g('co_hieu'),
+                ho_hieu: g('ho_hieu'),
+                imo: g('imo'),
+                ma_nganh_nghe: g('ma_nganh_nghe'),
+                ma_cang: g('ma_cang'),
+                ma_cang_phu: g('ma_cang_phu'),
+                tinh_thanh: g('tinh_thanh'),
+                tong_tai_trong: g('tong_tai_trong'),
+                chieu_dai_toan_bo: g('chieu_dai_toan_bo'),
+                chieu_dai_thiet_ke: g('chieu_dai_thiet_ke'),
+                chieu_rong: g('chieu_rong'),
+                mon_nuoc: g('mon_nuoc'),
+                cong_suat: g('cong_suat'),
+                so_thuyen_vien: g('so_thuyen_vien'),
+                loai_tau: g('loai_tau'),
+                dung_tich_ham_ca: g('dung_tich_ham_ca'),
+                van_toc_danh_bat: g('van_toc_danh_bat'),
+                van_toc_tu_do: g('van_toc_tu_do'),
+                toc_do_toi_da: g('toc_do_toi_da'),
+                tan_so_vhf: g('tan_so_vhf'),
+                tan_so_hf: g('tan_so_hf'),
+                so_di_dong: g('so_di_dong'),
+                // Owner info
+                owner_name: g('owner_name'),
+                owner_phone: g('owner_phone'),
+                owner_cccd: g('owner_cccd'),
+                owner_address: g('owner_address'),
+                owner_loai_ma_so: g('owner_loai_ma_so'),
+                owner_fax: g('owner_fax'),
+                owner_email: g('owner_email'),
+                // Captain info
+                captain_is_owner: g('captain_is_owner'),
+                captain_name: g('captain_name'),
+                captain_phone: g('captain_phone'),
+                captain_cccd: g('captain_cccd'),
+                captain_address: g('captain_address'),
+                captain_gender: g('captain_gender'),
+                captain_fax: g('captain_fax'),
+                // Requester
+                requester_is_owner: g('requester_is_owner'),
+                requester_name: g('requester_name'),
+                // Payment
+                so_thang: g('so_thang'),
+                loai_khuyen_mai: g('loai_khuyen_mai'),
+                gia_tri_khuyen_mai: g('gia_tri_khuyen_mai'),
+            };
+        }
+
+        // ── Validate bắt buộc trước khi gửi ─────────────────────────────────────────
+        function validateForm(data) {
+            const isEmpty = (v) => v === null || v === undefined || String(v).trim() === '';
+
+            // Trường luôn bắt buộc
+            const required = {
+                ship_code: 'Mã tàu',
+                serial_number: 'Serial Number',
+                bien_so_tau: 'Biển số tàu',
+                ma_nganh_nghe: 'Mã ngành nghề',
+                ma_cang: 'Mã cảng',
+                ma_cang_phu: 'Mã cảng phụ',
+                tinh_thanh: 'Tỉnh thành',
+                // Chủ tàu
+                owner_name: 'Tên chủ tàu',
+                owner_phone: 'SĐT chủ tàu',
+                owner_cccd: 'CCCD chủ tàu',
+                owner_loai_ma_so: 'Loại mã số (chủ tàu)',
+                owner_fax: 'Số Fax chủ tàu',
+                owner_email: 'Email chủ tàu',
+                owner_address: 'Địa chỉ chủ tàu',
+                // Kỹ thuật & thanh toán
+                so_thang: 'Số tháng',
+                tong_tai_trong: 'Tổng tải trọng',
+                chieu_dai_toan_bo: 'Chiều dài toàn bộ',
+                chieu_rong: 'Chiều rộng',
+                cong_suat: 'Công suất',
+                tan_so_vhf: 'Tần số VHF',
+                tan_so_hf: 'Tần số HF',
+                so_di_dong: 'Số di động',
+            };
+
+            const missing = Object.entries(required)
+                .filter(([k]) => isEmpty(data[k]))
+                .map(([, label]) => label);
+
+            // Trường thuyền trưởng: chỉ bắt buộc khi KHÔNG phải chủ tàu
+            if (!data.captain_is_owner) {
+                const captainRequired = {
+                    captain_name: 'Tên thuyền trưởng',
+                    captain_phone: 'SĐT thuyền trưởng',
+                    captain_cccd: 'CCCD thuyền trưởng',
+                    captain_address: 'Địa chỉ thuyền trưởng',
+                    captain_fax: 'Số Fax thuyền trưởng',
+                };
+                Object.entries(captainRequired).forEach(([k, label]) => {
+                    if (isEmpty(data[k])) missing.push(label);
+                });
+            }
+
+            return missing;
+        }
+
+        // ── UI State helpers ─────────────────────────────────────────────────────────
+        let progressInterval = null;
+
+        function setLoadingState(loading) {
+            const btn = document.getElementById('btn-run');
+            const btnIcon = document.getElementById('btn-icon');
+            const btnLabel = document.getElementById('btn-label');
+            const sub = document.getElementById('action-sub');
+            const bar = document.getElementById('progress-bar-wrap');
+            const barEl = document.getElementById('progress-bar');
+
+            btn.disabled = loading;
+
+            if (loading) {
+                btnIcon.innerHTML = '<div class="spinner"></div>';
+                btnLabel.textContent = 'Đang chạy...';
+                sub.textContent = '🤖 Robot đang thao tác — vui lòng không đóng cửa sổ này';
+                bar.classList.add('visible');
+
+                // Animate progress bar: 0→85% trong 90s (timeout là 180s)
+                let progress = 0;
+                barEl.style.width = '0%';
+                clearInterval(progressInterval);
+                progressInterval = setInterval(() => {
+                    progress = Math.min(progress + 0.3, 85);
+                    barEl.style.width = progress + '%';
+                }, 300);
+
+            } else {
+                btnIcon.textContent = '⚡';
+                btnLabel.textContent = 'Bắt đầu Auto';
+                sub.textContent = 'Điền form và nhấn nút để bắt đầu';
+                clearInterval(progressInterval);
+                barEl.style.width = '100%';
+                setTimeout(() => {
+                    bar.classList.remove('visible');
+                    barEl.style.width = '0%';
+                }, 600);
+            }
+        }
+
+        // ── Hiển thị kết quả ─────────────────────────────────────────────────────────
+        function showResult(data) {
+            const panel = document.getElementById('result-panel');
+            const header = document.getElementById('result-header');
+
+            const cskhOk = data.results?.cskh?.success;
+            const cauhinhOk = data.results?.cauhinh?.success;
+            const allOk = cskhOk && cauhinhOk;
+            const noneOk = !cskhOk && !cauhinhOk;
+
+            // Header
+            header.className = 'result-header ' + (allOk ? 'success' : noneOk ? 'error' : 'partial');
+            document.getElementById('result-header-icon').textContent = allOk ? '✅' : noneOk ? '❌' : '⚠️';
+            document.getElementById('result-header-text').textContent =
+                allOk ? 'Cả 2 hệ thống đã được điền thành công!' :
+                    noneOk ? 'Cả 2 hệ thống đều thất bại. Kiểm tra log để biết thêm.' :
+                        'Một hệ thống thành công, một thất bại — kiểm tra chi tiết bên dưới.';
+
+            // CSKH result
+            const cskh = data.results?.cskh ?? {};
+            document.getElementById('cskh-badge').textContent = cskh.success ? '✅' : '❌';
+            document.getElementById('cskh-badge').className = 'result-badge-' + (cskh.success ? 'ok' : 'err');
+            document.getElementById('cskh-message').textContent = cskh.message || '';
+            document.getElementById('cskh-duration').textContent = cskh.duration_ms ? `⏱ ${(cskh.duration_ms / 1000).toFixed(1)}s` : '';
+            const cskhErr = document.getElementById('cskh-error');
+            if (!cskh.success && cskh.error) { cskhErr.textContent = cskh.error; cskhErr.style.display = 'block'; }
+            else { cskhErr.style.display = 'none'; }
+
+            // Cauhinh result
+            const cauhinh = data.results?.cauhinh ?? {};
+            document.getElementById('cauhinh-badge').textContent = cauhinh.success ? '✅' : '❌';
+            document.getElementById('cauhinh-badge').className = 'result-badge-' + (cauhinh.success ? 'ok' : 'err');
+            document.getElementById('cauhinh-message').textContent = cauhinh.message || '';
+            document.getElementById('cauhinh-duration').textContent = cauhinh.duration_ms ? `⏱ ${(cauhinh.duration_ms / 1000).toFixed(1)}s` : '';
+            const cauhinhErr = document.getElementById('cauhinh-error');
+            if (!cauhinh.success && cauhinh.error) { cauhinhErr.textContent = cauhinh.error; cauhinhErr.style.display = 'block'; }
+            else { cauhinhErr.style.display = 'none'; }
+
+            // Footer
+            const totalSec = data.total_duration_ms ? (data.total_duration_ms / 1000).toFixed(1) : '?';
+            document.getElementById('result-total-time').textContent = `Tổng: ${totalSec}s`;
+            document.getElementById('result-log-file').textContent = data.log_file ? `📄 ${data.log_file}` : '';
+
+            panel.classList.add('visible');
+            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // ── MAIN: Run Automation ─────────────────────────────────────────────────────
+        async function runAutomation() {
+            const masterData = collectMasterData();
+
+            // Client-side validation
+            const missing = validateForm(masterData);
+            if (missing.length > 0) {
+                alert(`⚠️ Vui lòng điền các trường bắt buộc:\n\n• ${missing.join('\n• ')}`);
+                return;
+            }
+
+            // Clear kết quả cũ
+            document.getElementById('result-panel').classList.remove('visible');
+            setLoadingState(true);
+
+            try {
+                const resp = await fetch('/api/run-automation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ masterData }),
+                });
+
+                const data = await resp.json();
+
+                if (!resp.ok && !data.results) {
+                    // Lỗi HTTP không có results (VD: 400 validation error)
+                    alert(`❌ Lỗi: ${data.error || 'Không xác định'}`);
+                    return;
+                }
+
+                showResult(data);
+
+            } catch (err) {
+                alert(`❌ Không thể kết nối đến server.\n\nHãy đảm bảo server đang chạy:\n  node server.js\n\nChi tiết: ${err.message}`);
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        // ── Log Modal ────────────────────────────────────────────────────────────────
+        async function openLogsModal() {
+            document.getElementById('log-modal').classList.add('open');
+            const body = document.getElementById('log-modal-body');
+            body.innerHTML = '<div style="color:var(--text-3);font-size:0.8rem;text-align:center;padding:2rem;">Đang tải...</div>';
+
+            try {
+                const resp = await fetch('/api/logs');
+                const data = await resp.json();
+
+                if (!data.logs || data.logs.length === 0) {
+                    body.innerHTML = '<div style="color:var(--text-3);font-size:0.8rem;text-align:center;padding:2rem;">Chưa có log nào.</div>';
+                    return;
+                }
+
+                body.innerHTML = data.logs.map(log => {
+                    const ts = log.timestamp ? new Date(log.timestamp).toLocaleString('vi-VN') : '?';
+                    const ship = log.input?.ship_code || '?';
+                    const owner = log.input?.owner_name || '?';
+                    const cskh = log.results?.cskh;
+                    const cauhinh = log.results?.cauhinh;
+                    const total = log.total_duration_ms ? (log.total_duration_ms / 1000).toFixed(1) + 's' : '?';
+
+                    return `
+        <div class="log-entry">
+          <div class="log-ts">${ts} — ${total}</div>
+          <div class="log-ship">🚢 ${ship} | 👤 ${owner}</div>
+          <div>
+            <span class="${cskh?.success ? 'log-ok' : 'log-err'}">
+              ${cskh?.success ? '✅' : '❌'} CSKH
+            </span>
+            &nbsp;&nbsp;
+            <span class="${cauhinh?.success ? 'log-ok' : 'log-err'}">
+              ${cauhinh?.success ? '✅' : '❌'} Cấu hình
+            </span>
+          </div>
+          ${!cskh?.success && cskh?.error ? `<div class="log-err" style="margin-top:4px;font-size:0.62rem">${cskh.error.slice(0, 120)}</div>` : ''}
+          ${!cauhinh?.success && cauhinh?.error ? `<div class="log-err" style="margin-top:4px;font-size:0.62rem">${cauhinh.error.slice(0, 120)}</div>` : ''}
+        </div>`;
+                }).join('');
+
+            } catch (err) {
+                body.innerHTML = `<div style="color:var(--danger);font-size:0.8rem;padding:1rem;">Lỗi tải log: ${err.message}</div>`;
+            }
+        }
+
+        function closeLogsModal(e) {
+            if (e.target === document.getElementById('log-modal')) closeLogsModalDirect();
+        }
+        function closeLogsModalDirect() {
+            document.getElementById('log-modal').classList.remove('open');
+        }
+
+        // ── Init ─────────────────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            // ESC to close modal
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape') closeLogsModalDirect();
+            });
+        });
+    </script>
+</body>
+
+</html>

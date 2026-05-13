@@ -1,0 +1,12 @@
+# Bỏ qua thư viện nặng
+node_modules/
+
+# Bỏ qua file chứa pass/cấu hình cá nhân
+.env
+
+# Bỏ qua log chạy và ảnh chụp màn hình lỗi
+logs/
+
+# Bỏ qua các file rác của hệ điều hành
+.DS_Store
+Thumbs.db

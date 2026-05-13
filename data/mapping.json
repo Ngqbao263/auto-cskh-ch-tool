@@ -1,0 +1,982 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "description": "Mapping config cho hệ thống Auto Data Entry: CSKH (SDVICO) & Cấu hình (Viettel)",
+    "last_updated": "2026-05-12",
+    "author": "Auto-generated từ Master Form survey",
+    "targets": ["cskh", "cauhinh"],
+    "notes": [
+      "Cấu hình Viettel gồm 5 form con (form1..form5) phải điền tuần tự.",
+      "CSKH là 1 form duy nhất.",
+      "Tất cả selector nên dùng fallback chain (mảng) để chịu được thay đổi UI nhỏ.",
+      "action_type quyết định cách Playwright tương tác với element."
+    ]
+  },
+
+  "_action_types_reference": {
+    "fill": "page.fill() — input/textarea thông thường",
+    "fill_then_tab": "fill() rồi nhấn Tab để kích hoạt sự kiện onchange/onblur của web",
+    "combobox_search": "click mở dropdown -> type để tìm kiếm -> Enter để chọn kết quả đầu tiên",
+    "datepicker_radix": "KHÔNG gõ text. click button -> Dialog lịch xuất hiện -> điều hướng tháng/năm -> click ô ngày",
+    "select_native": "page.selectOption() — thẻ <select> HTML tiêu chuẩn",
+    "custom_select": "Thử page.selectOption() trên thẻ <select> ẩn; fallback: click mở menu -> click item text",
+    "checkbox_click": "click() để toggle; kiểm tra trạng thái trước khi click để đảm bảo đúng state",
+    "extract_and_fill": "Đọc value từ selector_source -> transform -> điền vào selector_dest",
+    "static_fill": "Luôn điền một giá trị cố định, bỏ qua Master Form input",
+    "computed_date": "Tính ngày dựa trên today() + offset, theo format chỉ định",
+    "conditional_fill": "Chỉ điền khi điều kiện (condition_field) thoả mãn; chờ element enabled trước"
+  },
+
+  "master_fields": {
+    "_comment": "Đây là danh sách tất cả các field xuất hiện trên Master Form (nguồn sự thật duy nhất).",
+    "ship_info": {
+      "ship_code": { "label": "Mã tàu", "type": "text", "required": true },
+      "serial_number": {
+        "label": "Serial Number",
+        "type": "text",
+        "required": true
+      },
+      "bien_so_tau": {
+        "label": "Biển số tàu",
+        "type": "text",
+        "required": true
+      },
+      "co_hieu": { "label": "Cờ hiệu", "type": "text", "required": false },
+      "ho_hieu": { "label": "Hô hiệu", "type": "text", "required": false },
+      "imo": { "label": "IMO", "type": "text", "required": false },
+      "ma_nganh_nghe": {
+        "label": "Mã ngành nghề",
+        "type": "text",
+        "required": false
+      },
+      "ma_cang": { "label": "Mã cảng", "type": "text", "required": false },
+      "ma_cang_phu": {
+        "label": "Mã cảng phụ",
+        "type": "text",
+        "required": false
+      },
+      "tinh_thanh": {
+        "label": "Tỉnh thành",
+        "type": "text",
+        "required": false
+      },
+      "tong_tai_trong": {
+        "label": "Tổng tải trọng (tấn)",
+        "type": "number",
+        "required": true
+      },
+      "chieu_dai_toan_bo": {
+        "label": "Chiều dài toàn bộ (mét)",
+        "type": "number",
+        "required": true
+      },
+      "chieu_dai_thiet_ke": {
+        "label": "Chiều dài thiết kế (mét)",
+        "type": "number",
+        "required": false
+      },
+      "chieu_rong": {
+        "label": "Chiều rộng",
+        "type": "number",
+        "required": true
+      },
+      "mon_nuoc": { "label": "Mớn nước", "type": "number", "required": true },
+      "cong_suat": { "label": "Công suất", "type": "number", "required": true },
+      "so_thuyen_vien": {
+        "label": "Số thuyền viên",
+        "type": "number",
+        "required": true
+      },
+      "loai_tau": { "label": "Loại tàu", "type": "text", "required": false },
+      "dung_tich_ham_ca": {
+        "label": "Dung tích hầm cá",
+        "type": "number",
+        "required": true
+      },
+      "van_toc_danh_bat": {
+        "label": "Vận tốc đánh bắt",
+        "type": "number",
+        "required": true
+      },
+      "van_toc_tu_do": {
+        "label": "Vận tốc tự do",
+        "type": "number",
+        "required": false
+      },
+      "toc_do_toi_da": {
+        "label": "Tốc độ tối đa",
+        "type": "number",
+        "required": true
+      },
+      "tan_so_vhf": { "label": "Tần số VHF", "type": "text", "required": true },
+      "tan_so_hf": { "label": "Tần số HF", "type": "text", "required": true },
+      "so_di_dong": { "label": "Số di động", "type": "text", "required": true }
+    },
+    "owner_info": {
+      "owner_name": {
+        "label": "Tên chủ tàu",
+        "type": "text",
+        "required": true
+      },
+      "owner_phone": {
+        "label": "SĐT chủ tàu",
+        "type": "text",
+        "required": true
+      },
+      "owner_cccd": {
+        "label": "CCCD chủ tàu",
+        "type": "text",
+        "required": true
+      },
+      "owner_address": {
+        "label": "Địa chỉ chủ tàu",
+        "type": "text",
+        "required": false
+      },
+      "owner_loai_ma_so": {
+        "label": "Loại mã số",
+        "type": "select",
+        "required": false,
+        "options": {
+          "1": "CMND",
+          "2": "CCCD",
+          "3": "Mã định danh cá nhân",
+          "4": "Mã doanh nghiệp"
+        }
+      },
+      "owner_fax": {
+        "label": "Số Fax chủ tàu",
+        "type": "text",
+        "required": false
+      },
+      "owner_email": {
+        "label": "Email chủ tàu",
+        "type": "text",
+        "required": false
+      }
+    },
+    "captain_info": {
+      "captain_is_owner": {
+        "label": "Thuyền trưởng là Chủ tàu",
+        "type": "boolean",
+        "required": false
+      },
+      "captain_name": {
+        "label": "Tên thuyền trưởng",
+        "type": "text",
+        "required": false
+      },
+      "captain_phone": {
+        "label": "SĐT thuyền trưởng",
+        "type": "text",
+        "required": false
+      },
+      "captain_cccd": {
+        "label": "CCCD thuyền trưởng",
+        "type": "text",
+        "required": false
+      },
+      "captain_address": {
+        "label": "Địa chỉ thuyền trưởng",
+        "type": "text",
+        "required": false
+      },
+      "captain_gender": {
+        "label": "Giới tính",
+        "type": "text",
+        "required": false
+      },
+      "captain_fax": {
+        "label": "Số Fax thuyền trưởng",
+        "type": "text",
+        "required": false
+      }
+    },
+    "requester_info": {
+      "requester_is_owner": {
+        "label": "Người yêu cầu là Chủ tàu",
+        "type": "boolean",
+        "required": false
+      },
+      "requester_name": {
+        "label": "Tên người yêu cầu",
+        "type": "text",
+        "required": true
+      }
+    },
+    "payment_info": {
+      "so_thang": {
+        "label": "Số tháng",
+        "type": "number",
+        "required": true,
+        "note": "Ô có giá trị mặc định = 3, bot phải clear() trước khi fill"
+      },
+      "loai_khuyen_mai": {
+        "label": "Loại khuyến mãi",
+        "type": "select",
+        "required": false,
+        "options": {
+          "none": "Không có",
+          "fixed": "Tiền mặt (VNĐ)",
+          "percent": "Phần trăm (%)",
+          "month": "Tặng tháng"
+        }
+      },
+      "gia_tri_khuyen_mai": {
+        "label": "Giá trị khuyến mãi",
+        "type": "number",
+        "required": false,
+        "note": "Chỉ điền khi loai_khuyen_mai != none. Chờ element enabled."
+      }
+    }
+  },
+
+  "targets": {
+    "cskh": {
+      "_comment": "Web CSKH (SDVICO) — 1 form đơn. Nhiều selector dùng placeholder vì thiếu id/name.",
+      "form_structure": "single_form",
+
+      "fields": {
+        "ship_code": {
+          "master_field": "ship_code",
+          "label_vi": "Mã tàu",
+          "action_type": "combobox_search",
+          "selector": {
+            "trigger_button": [
+              "button[role='combobox']:has-text('Nhập mã tàu')",
+              "//label[contains(.,'Mã tàu')]/following-sibling::button[@role='combobox']",
+              "button[role='combobox']:near(:text('Mã tàu'))"
+            ],
+            "search_input": [
+              "input[role='combobox']",
+              "[cmdk-input]",
+              "input[placeholder*='Tìm']"
+            ]
+          },
+          "transform": "none",
+          "notes": "Button text thực tế là 'Nhập mã tàu...' — dùng :has-text() làm primary. XPath dùng contains() vì label có thể có asterisk (*) nối thêm."
+        },
+
+        "serial_number": {
+          "master_field": "serial_number",
+          "label_vi": "Serial Number",
+          "action_type": "combobox_search",
+          "selector": {
+            "trigger_button": [
+              "button[role='combobox']:has-text('Chọn Serial Number')",
+              "//label[contains(.,'Serial Number')]/following-sibling::button[@role='combobox']",
+              "button[role='combobox']:near(:text('Serial Number'))"
+            ],
+            "search_input": ["input[role='combobox']", "[cmdk-input]"]
+          },
+          "transform": "none",
+          "notes": "Button text thực tế là 'Chọn Serial Number...' — dùng :has-text() làm primary. Label chứa <span>*</span> nên XPath dùng contains(). Button là sibling trực tiếp của label, không có div trung gian."
+        },
+
+        "owner_name": {
+          "master_field": "owner_name",
+          "label_vi": "Tên chủ tàu",
+          "action_type": "fill",
+          "selector": [
+            "input[placeholder='Nhập tên chủ tàu']",
+            "//label[contains(.,'Tên chủ tàu')]/following-sibling::input"
+          ],
+          "transform": "none"
+        },
+
+        "owner_phone": {
+          "master_field": "owner_phone",
+          "label_vi": "SĐT chủ tàu",
+          "action_type": "fill",
+          "selector": [
+            "input[placeholder='Nhập số điện thoại chủ tàu']",
+            "//label[contains(.,'SĐT chủ tàu')]/following-sibling::input"
+          ],
+          "transform": "phone_vn"
+        },
+
+        "owner_cccd": {
+          "master_field": "owner_cccd",
+          "label_vi": "CCCD chủ tàu",
+          "action_type": "fill",
+          "selector": [
+            "input[placeholder='Nhập số CCCD chủ tàu']",
+            "//label[contains(.,'CCCD')]/following-sibling::input"
+          ],
+          "transform": "none"
+        },
+
+        "owner_address": {
+          "master_field": "owner_address",
+          "label_vi": "Địa chỉ chủ tàu",
+          "action_type": "fill",
+          "selector": [
+            "input[placeholder='Số nhà, đường, phường/xã, huyện/thị xã, tỉnh/thành phố chủ tàu']",
+            "//label[contains(.,'Địa chỉ')][1]/following-sibling::input"
+          ],
+          "transform": "none"
+        },
+
+        "captain_is_owner": {
+          "master_field": "captain_is_owner",
+          "label_vi": "Thuyền trưởng là Chủ tàu (checkbox)",
+          "action_type": "checkbox_click",
+          "selector": [
+            "button[role='checkbox']:near(:text('Thuyền trưởng là Chủ tàu'))",
+            "input[type='checkbox']:near(:text('Thuyền trưởng là Chủ tàu'))",
+            "//label[contains(.,'Thuyền trưởng là Chủ tàu')]//button[@role='checkbox']"
+          ],
+          "transform": "none",
+          "logic": "Nếu master_field = true: click để check (nếu chưa checked). Nếu false: đảm bảo unchecked, bỏ qua phần điền captain bên dưới."
+        },
+
+        "captain_name": {
+          "master_field": "captain_name",
+          "label_vi": "Tên thuyền trưởng",
+          "action_type": "fill",
+          "selector": [
+            "input[placeholder='Nhập tên thuyền trưởng']",
+            "//label[contains(.,'Tên thuyền trưởng')]/following-sibling::input"
+          ],
+          "transform": "none",
+          "conditional": "Chỉ điền khi captain_is_owner = false"
+        },
+
+        "captain_phone": {
+          "master_field": "captain_phone",
+          "label_vi": "SĐT thuyền trưởng",
+          "action_type": "fill",
+          "selector": ["input[placeholder='Nhập số điện thoại thuyền trưởng']"],
+          "transform": "phone_vn",
+          "conditional": "Chỉ điền khi captain_is_owner = false"
+        },
+
+        "captain_cccd": {
+          "master_field": "captain_cccd",
+          "label_vi": "CCCD thuyền trưởng",
+          "action_type": "fill",
+          "selector": ["input[placeholder='Nhập số CCCD thuyền trưởng']"],
+          "transform": "none",
+          "conditional": "Chỉ điền khi captain_is_owner = false"
+        },
+
+        "captain_address": {
+          "master_field": "captain_address",
+          "label_vi": "Địa chỉ thuyền trưởng",
+          "action_type": "fill",
+          "selector": [
+            "input[placeholder='Số nhà, đường, phường/xã, huyện/thị xã, tỉnh/thành phố thuyền trưởng']"
+          ],
+          "transform": "none",
+          "conditional": "Chỉ điền khi captain_is_owner = false"
+        },
+
+        "requester_is_owner": {
+          "master_field": "requester_is_owner",
+          "label_vi": "Người yêu cầu là chủ tàu (checkbox)",
+          "action_type": "checkbox_click",
+          "selector": [
+            "button[role='checkbox']:near(:text('Người yêu cầu là chủ tàu'))",
+            "input[type='checkbox']:near(:text('Người yêu cầu là chủ tàu'))"
+          ],
+          "transform": "none",
+          "logic": "Nếu true: click để check. Web sẽ tự điền thông tin chủ tàu vào section người yêu cầu."
+        },
+
+        "requester_name": {
+          "master_field": "requester_name",
+          "label_vi": "Tên người yêu cầu",
+          "action_type": "combobox_search",
+          "selector": {
+            "trigger_button": [
+              "button[role='combobox']:near(:text('Tên người yêu cầu'))",
+              "//label[contains(.,'Tên người yêu cầu')]/following-sibling::button[@role='combobox']"
+            ],
+            "search_input": ["input[role='combobox']", "[cmdk-input]"]
+          },
+          "transform": "none",
+          "conditional": "Chỉ điền khi requester_is_owner = false"
+        },
+
+        "so_thang": {
+          "master_field": "so_thang",
+          "label_vi": "Số tháng",
+          "action_type": "fill",
+          "selector": [
+            "//label[contains(.,'Số tháng')]/following-sibling::input[@type='number']",
+            "//label[contains(.,'Số tháng')]/following::input[@type='number'][1]"
+          ],
+          "transform": "to_string",
+          "pre_action": "clear",
+          "notes": "QUAN TRỌNG: Ô có giá trị mặc định = 3. Phải gọi clear() trước fill() để xóa giá trị cũ."
+        },
+
+        "loai_khuyen_mai": {
+          "master_field": "loai_khuyen_mai",
+          "label_vi": "Loại khuyến mãi",
+          "action_type": "custom_select",
+          "selector": {
+            "hidden_select": [
+              "select:near(:text('Loại khuyến mãi'))",
+              "//label[contains(.,'Loại khuyến mãi')]/following-sibling::select"
+            ],
+            "trigger_button": [
+              "button[role='combobox']:near(:text('Loại khuyến mãi'))"
+            ],
+            "option_text_pattern": "Sẽ được resolve từ value_map"
+          },
+          "transform": "map_value",
+          "transformOptions": {
+            "map": {
+              "none": "Không có",
+              "fixed": "Tiền mặt (VNĐ)",
+              "percent": "Phần trăm (%)",
+              "month": "Tặng tháng"
+            }
+          },
+          "strategy": "Thử 1: page.selectOption() trên hidden_select. Thử 2 (fallback): click trigger_button -> click item có text = giá trị đã map."
+        },
+
+        "gia_tri_khuyen_mai": {
+          "master_field": "gia_tri_khuyen_mai",
+          "label_vi": "Giá trị khuyến mãi",
+          "action_type": "conditional_fill",
+          "selector": [
+            "input[placeholder='Nhập giá trị']",
+            "//label[contains(.,'Giá trị KM')]/following-sibling::input"
+          ],
+          "transform": "to_string",
+          "condition": {
+            "field": "loai_khuyen_mai",
+            "operator": "not_equals",
+            "value": "none"
+          },
+          "wait_for_enabled": true,
+          "notes": "Chỉ điền khi loai_khuyen_mai != none. Phải waitFor({ state: 'enabled' }) vì ô này bị disabled khi KM = none."
+        }
+      }
+    },
+
+    "cauhinh": {
+      "_comment": "Web Cấu hình (Viettel) — Gồm 5 form con, điền tuần tự. Mỗi form có selector rõ ràng với id.",
+      "form_structure": "multi_step",
+      "forms": {
+        "form1": {
+          "_name": "Thông tin thiết bị (Device Info)",
+          "_comment": "Các trường cơ bản về thiết bị. Có một số trường static (giá trị cố định).",
+
+          "fields": {
+            "device_name": {
+              "master_field": "ship_code",
+              "label_vi": "Tên thiết bị",
+              "action_type": "fill",
+              "selector": ["input#deviceName", "#deviceName"],
+              "transform": "none"
+            },
+            "species": {
+              "master_field": null,
+              "label_vi": "Chủng loại",
+              "action_type": "static_fill",
+              "selector": ["#species"],
+              "static_value": "S-Tracking",
+              "transform": "none"
+            },
+            "frequency": {
+              "master_field": null,
+              "label_vi": "Tần số",
+              "action_type": "static_fill",
+              "selector": ["#frequency"],
+              "static_value": "120Hz",
+              "transform": "none"
+            },
+            "fw_version": {
+              "master_field": null,
+              "label_vi": "Phiên bản phần cứng",
+              "action_type": "static_fill",
+              "selector": ["#fwversion"],
+              "static_value": "v1.0",
+              "transform": "none"
+            },
+            "date_manufacture": {
+              "master_field": null,
+              "label_vi": "Ngày sản xuất (Form 1)",
+              "action_type": "computed_date",
+              "selector": ["#dateManufacture"],
+              "transform": "computed_date",
+              "transformOptions": {
+                "offset_days": 0,
+                "outputFormat": "DD/MM/YYYY"
+              },
+              "notes": "Điền ngày hiện tại."
+            },
+            "end_manufacture": {
+              "master_field": null,
+              "label_vi": "Ngày hết hạn (Form 1)",
+              "action_type": "computed_date",
+              "selector": ["#endManufacture"],
+              "transform": "computed_date",
+              "transformOptions": {
+                "offset_years": 5,
+                "outputFormat": "DD/MM/YYYY"
+              },
+              "notes": "Điền ngày hiện tại + 5 năm."
+            }
+          }
+        },
+
+        "form2": {
+          "_name": "Thông tin thuyền trưởng (Captain)",
+
+          "fields": {
+            "captain_birthday": {
+              "master_field": null,
+              "label_vi": "Ngày sinh thuyền trưởng",
+              "action_type": "computed_date",
+              "selector": ["#birthdayCaptain"],
+              "transform": "computed_date",
+              "transformOptions": {
+                "offset_days": 0,
+                "outputFormat": "DD/MM/YYYY"
+              },
+              "notes": "Điền ĐẦU TIÊN để calendar tự đóng khi bot click vào field tiếp theo."
+            },
+            "captain_name": {
+              "master_field": "captain_name",
+              "label_vi": "Họ và tên thuyền trưởng",
+              "action_type": "fill",
+              "selector": ["#captainDevice", "input#captainDevice"],
+              "transform": "none",
+              "copy_from_owner_if": "captain_is_owner",
+              "copy_source_field": "owner_name",
+              "notes": "Nếu captain_is_owner=true, copy giá trị từ owner_name."
+            },
+            "captain_phone": {
+              "master_field": "captain_phone",
+              "label_vi": "Số điện thoại thuyền trưởng",
+              "action_type": "fill",
+              "selector": ["#phoneCaptain1"],
+              "transform": "phone_vn",
+              "copy_from_owner_if": "captain_is_owner",
+              "copy_source_field": "owner_phone"
+            },
+            "captain_cccd": {
+              "master_field": "captain_cccd",
+              "label_vi": "Số CMND thuyền trưởng",
+              "action_type": "fill",
+              "selector": ["#cmndCaptain"],
+              "transform": "none",
+              "copy_from_owner_if": "captain_is_owner",
+              "copy_source_field": "owner_cccd"
+            },
+            "captain_address": {
+              "master_field": "captain_address",
+              "label_vi": "Địa chỉ thuyền trưởng",
+              "action_type": "fill",
+              "selector": ["#addressCaptain"],
+              "transform": "none",
+              "copy_from_owner_if": "captain_is_owner",
+              "copy_source_field": "owner_address"
+            },
+            "captain_gender": {
+              "master_field": "captain_gender",
+              "label_vi": "Giới tính",
+              "action_type": "fill",
+              "selector": ["#genderCaptain"],
+              "transform": "none"
+            },
+            "captain_fax": {
+              "master_field": "captain_fax",
+              "label_vi": "Số Fax thuyền trưởng",
+              "action_type": "fill",
+              "selector": ["#faxCaptain"],
+              "transform": "none"
+            }
+          }
+        },
+
+        "form3": {
+          "_name": "Thông tin chủ tàu (Ship Owner)",
+          "_important": "Ô #shipownerDevice và các ô liên quan có sự kiện AJAX (onchange, onblur). PHẢI nhấn Tab sau khi fill.",
+
+          "fields": {
+            "owner_birthday": {
+              "master_field": null,
+              "label_vi": "Ngày sinh chủ tàu",
+              "action_type": "computed_date",
+              "selector": ["#birthdayShipowner"],
+              "transform": "computed_date",
+              "transformOptions": {
+                "offset_days": 0,
+                "outputFormat": "DD/MM/YYYY"
+              },
+              "notes": "Điền ĐẦU TIÊN để calendar tự đóng khi bot click vào field tiếp theo."
+            },
+            "owner_name": {
+              "master_field": "owner_name",
+              "label_vi": "Họ tên chủ tàu",
+              "action_type": "fill_then_tab",
+              "selector": ["#shipownerDevice", "input#shipownerDevice"],
+              "transform": "none",
+              "notes": "Có AJAX listener. fill() -> Tab để kích hoạt onchange/onblur. Dùng fill_then_tab."
+            },
+            "owner_phone": {
+              "master_field": "owner_phone",
+              "label_vi": "Số điện thoại chủ tàu",
+              "action_type": "fill",
+              "selector": ["#phoneShipowner1"],
+              "transform": "digits_only",
+              "notes": "Type = number, chỉ nhận ký tự số. Dùng transform digits_only để strip ký tự lạ."
+            },
+            "owner_cccd": {
+              "master_field": "owner_cccd",
+              "label_vi": "Số CMND chủ tàu",
+              "action_type": "fill",
+              "selector": ["#cmndShipowner"],
+              "transform": "none"
+            },
+            "owner_address": {
+              "master_field": "owner_address",
+              "label_vi": "Địa chỉ chủ tàu",
+              "action_type": "fill",
+              "selector": ["#addressShipowner"],
+              "transform": "none"
+            },
+            "owner_loai_ma_so": {
+              "master_field": "owner_loai_ma_so",
+              "label_vi": "Loại mã số",
+              "action_type": "select_native",
+              "selector": ["select#loaiMsTCTS", "#loaiMsTCTS"],
+              "transform": "map_value",
+              "transformOptions": {
+                "map": {
+                  "cmnd": "1",
+                  "cccd": "2",
+                  "dinh_danh": "3",
+                  "doanh_nghiep": "4"
+                }
+              },
+              "notes": "Thẻ <select> HTML thông thường, dùng selectOption() với value số (1/2/3/4)."
+            },
+            "owner_fax": {
+              "master_field": "owner_fax",
+              "label_vi": "Số Fax chủ tàu",
+              "action_type": "fill",
+              "selector": ["#faxShipowner"],
+              "transform": "none"
+            },
+            "owner_email": {
+              "master_field": "owner_email",
+              "label_vi": "Email chủ tàu",
+              "action_type": "fill",
+              "selector": ["#emailShipowner"],
+              "transform": "none"
+            }
+          }
+        },
+
+        "form4": {
+          "_name": "Thông tin tàu chi tiết (Vessel Details)",
+
+          "fields": {
+            "bien_so_tau": {
+              "master_field": "bien_so_tau",
+              "label_vi": "Biển số tàu",
+              "action_type": "fill",
+              "selector": ["#vin"],
+              "transform": "none"
+            },
+            "co_hieu": {
+              "master_field": "co_hieu",
+              "label_vi": "Cờ hiệu",
+              "action_type": "fill",
+              "selector": ["#cohieu"],
+              "transform": "none"
+            },
+            "ho_hieu": {
+              "master_field": "ho_hieu",
+              "label_vi": "Hô hiệu",
+              "action_type": "fill",
+              "selector": ["#hohieu"],
+              "transform": "none"
+            },
+            "imo": {
+              "master_field": "imo",
+              "label_vi": "IMO",
+              "action_type": "fill",
+              "selector": ["#imo"],
+              "transform": "none"
+            },
+            "ma_nganh_nghe": {
+              "master_field": "ma_nganh_nghe",
+              "label_vi": "Mã ngành nghề",
+              "action_type": "fill",
+              "selector": ["#career"],
+              "transform": "none"
+            },
+            "ngay_dang_ky": {
+              "master_field": null,
+              "label_vi": "Ngày đăng ký",
+              "action_type": "computed_date",
+              "selector": ["#ngaydangky"],
+              "transform": "computed_date",
+              "transformOptions": {
+                "offset_days": 0,
+                "outputFormat": "DD/MM/YYYY"
+              }
+            },
+            "ngay_het_han_dang_ky": {
+              "master_field": null,
+              "label_vi": "Ngày hết hạn đăng ký",
+              "action_type": "computed_date",
+              "selector": ["#ngayhethandangky"],
+              "transform": "computed_date",
+              "transformOptions": {
+                "offset_years": 5,
+                "outputFormat": "DD/MM/YYYY"
+              }
+            },
+            "ma_cang": {
+              "master_field": "ma_cang",
+              "label_vi": "Mã cảng",
+              "action_type": "fill",
+              "selector": ["#seaPort"],
+              "transform": "none"
+            },
+            "ma_cang_phu": {
+              "master_field": "ma_cang_phu",
+              "label_vi": "Mã cảng phụ",
+              "action_type": "fill",
+              "selector": ["#seaPortEx"],
+              "transform": "none"
+            },
+            "tinh_thanh": {
+              "master_field": "tinh_thanh",
+              "label_vi": "Tỉnh thành",
+              "action_type": "fill",
+              "selector": ["#province"],
+              "transform": "none"
+            },
+            "tong_tai_trong": {
+              "master_field": "tong_tai_trong",
+              "label_vi": "Tổng tải trọng (tấn)",
+              "action_type": "fill",
+              "selector": ["#tongtaitrong"],
+              "transform": "to_string"
+            },
+            "chieu_dai_toan_bo": {
+              "master_field": "chieu_dai_toan_bo",
+              "label_vi": "Chiều dài toàn bộ (mét)",
+              "action_type": "fill",
+              "selector": ["#chieudaitoanbo"],
+              "transform": "to_string"
+            },
+            "chieu_dai_thiet_ke": {
+              "master_field": "chieu_dai_thiet_ke",
+              "label_vi": "Chiều dài thiết kế (mét)",
+              "action_type": "fill",
+              "selector": ["#chieudaithietke"],
+              "transform": "to_string"
+            },
+            "chieu_rong": {
+              "master_field": "chieu_rong",
+              "label_vi": "Chiều rộng",
+              "action_type": "fill",
+              "selector": ["#chieurong"],
+              "transform": "to_string"
+            },
+            "mon_nuoc": {
+              "master_field": "mon_nuoc",
+              "label_vi": "Mớn nước",
+              "action_type": "fill",
+              "selector": ["#monnuoc"],
+              "transform": "to_string"
+            },
+            "cong_suat": {
+              "master_field": "cong_suat",
+              "label_vi": "Công suất",
+              "action_type": "fill",
+              "selector": ["#congsuat"],
+              "transform": "to_string"
+            },
+            "mau_vo_tau": {
+              "master_field": null,
+              "label_vi": "Màu vỏ tàu",
+              "action_type": "static_fill",
+              "selector": ["#mauvotau"],
+              "static_value": "Xanh",
+              "transform": "none"
+            },
+            "so_thuyen_vien": {
+              "master_field": "so_thuyen_vien",
+              "label_vi": "Số thuyền viên",
+              "action_type": "fill",
+              "selector": ["#sothuyenvien"],
+              "transform": "to_string",
+              "fallback_static": "8",
+              "notes": "Nếu master_field null hoặc rỗng, điền giá trị mặc định 8."
+            },
+            "ngay_san_xuat_tau": {
+              "master_field": null,
+              "label_vi": "Ngày sản xuất tàu (Form 4)",
+              "action_type": "computed_date",
+              "selector": ["#ngaysanxuat"],
+              "transform": "computed_date",
+              "transformOptions": {
+                "offset_days": 0,
+                "outputFormat": "DD/MM/YYYY"
+              }
+            },
+            "ngay_het_han_tau": {
+              "master_field": null,
+              "label_vi": "Ngày hết hạn tàu (Form 4)",
+              "action_type": "computed_date",
+              "selector": ["#ngayhethan"],
+              "transform": "computed_date",
+              "transformOptions": {
+                "offset_years": 5,
+                "outputFormat": "DD/MM/YYYY"
+              }
+            },
+            "loai_tau": {
+              "master_field": null,
+              "label_vi": "Loại tàu",
+              "action_type": "static_fill",
+              "selector": ["#vessel"],
+              "static_value": "TACA",
+              "transform": "none"
+            },
+            "dung_tich_ham_ca": {
+              "master_field": "dung_tich_ham_ca",
+              "label_vi": "Dung tích hầm cá",
+              "action_type": "fill",
+              "selector": ["#dungtichhamca"],
+              "transform": "to_string"
+            },
+            "van_toc_danh_bat": {
+              "master_field": "van_toc_danh_bat",
+              "label_vi": "Vận tốc đánh bắt",
+              "action_type": "fill",
+              "selector": ["#vantocdanhbat"],
+              "transform": "to_string"
+            },
+            "van_toc_tu_do": {
+              "master_field": "van_toc_tu_do",
+              "label_vi": "Vận tốc tự do",
+              "action_type": "fill",
+              "selector": ["#vantoctudo"],
+              "transform": "to_string"
+            },
+            "toc_do_toi_da": {
+              "master_field": "toc_do_toi_da",
+              "label_vi": "Tốc độ tối đa",
+              "action_type": "fill",
+              "selector": ["#tocdotoida"],
+              "transform": "to_string"
+            },
+            "tan_so_vhf": {
+              "master_field": "tan_so_vhf",
+              "label_vi": "Tần số VHF",
+              "action_type": "fill",
+              "selector": ["#vhf"],
+              "transform": "none"
+            },
+            "tan_so_hf": {
+              "master_field": "tan_so_hf",
+              "label_vi": "Tần số HF",
+              "action_type": "fill",
+              "selector": ["#hf"],
+              "transform": "none"
+            },
+            "so_di_dong": {
+              "master_field": "so_di_dong",
+              "label_vi": "Số di động",
+              "action_type": "fill",
+              "selector": ["#phoneNumDevice"],
+              "transform": "digits_only"
+            },
+            "so_ve_tinh": {
+              "master_field": null,
+              "label_vi": "Số vệ tinh",
+              "action_type": "extract_and_fill",
+              "selector": {
+                "source": ["#deviceId1"],
+                "destination": ["#sovetinh"]
+              },
+              "transform": "extract_last_n_chars",
+              "transformOptions": { "n": 9 },
+              "notes": "LOGIC ĐẶC BIỆT: Không có trên Master Form. Bot đọc value của #deviceId1 -> lấy 9 ký tự cuối -> điền vào #sovetinh. Thực hiện sau khi #deviceId1 đã được điền."
+            }
+          }
+        },
+
+        "form5": {
+          "_name": "Cấu hình nâng cao (Advanced Config)",
+
+          "fields": {
+            "ntime": {
+              "master_field": null,
+              "label_vi": "Ntime",
+              "action_type": "static_fill",
+              "selector": ["#ntime"],
+              "static_value": "3600",
+              "transform": "none",
+              "notes": "Luôn điền cố định 3600."
+            }
+          }
+        }
+      }
+    }
+  },
+
+  "transforms_registry": {
+    "_comment": "Tất cả các hàm transform được tham chiếu trong config này. Implement trong transforms.js",
+
+    "none": {
+      "description": "Giữ nguyên giá trị, không biến đổi."
+    },
+    "phone_vn": {
+      "description": "Chuẩn hóa số điện thoại Việt Nam về dạng 10 số, bắt đầu bằng 0.",
+      "example": "+84901234567 → 0901234567 | 84901234567 → 0901234567"
+    },
+    "digits_only": {
+      "description": "Chỉ giữ lại ký tự số, loại bỏ tất cả ký tự khác.",
+      "example": "+84-901.234.567 → 84901234567"
+    },
+    "to_string": {
+      "description": "Chuyển number/boolean sang string để điền vào input.",
+      "example": "123 → '123'"
+    },
+    "format_date": {
+      "description": "Chuyển đổi định dạng ngày. Input: ISO string hoặc Date object. Output: theo outputFormat.",
+      "params": { "outputFormat": "DD/MM/YYYY | YYYY-MM-DD | MM/DD/YYYY" },
+      "example": "2026-05-12 → 12/05/2026 (với outputFormat DD/MM/YYYY)"
+    },
+    "computed_date": {
+      "description": "Tính ngày từ ngày hiện tại (today) cộng offset. Không cần input từ Master Form.",
+      "params": {
+        "offset_days": "Số ngày cộng thêm (default: 0)",
+        "offset_years": "Số năm cộng thêm (default: 0)",
+        "outputFormat": "DD/MM/YYYY"
+      },
+      "example": "today + offset_years:5 → 12/05/2031"
+    },
+    "map_value": {
+      "description": "Tra bảng key-value để đổi giá trị. Fallback: giữ nguyên nếu không có trong map.",
+      "params": { "map": "object key→value" }
+    },
+    "extract_last_n_chars": {
+      "description": "Đọc string, lấy n ký tự cuối cùng.",
+      "params": { "n": "Số ký tự cần lấy" },
+      "example": "IMEI: 'ABC123456789' với n=9 → '456789' (9 ký tự cuối)"
+    }
+  },
+
+  "error_handling": {
+    "on_selector_not_found": "screenshot → log error → throw để dừng form hiện tại, không ảnh hưởng form khác",
+    "on_transform_fail": "log warning với giá trị gốc → dùng giá trị gốc (graceful degradation)",
+    "on_submit_timeout": "screenshot → retry 1 lần sau 3s → nếu vẫn fail thì throw",
+    "screenshot_on_error": true,
+    "screenshot_path": "./logs/errors/",
+    "log_path": "./logs/runs/"
+  }
+}
