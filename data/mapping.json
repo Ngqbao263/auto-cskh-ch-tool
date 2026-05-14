@@ -110,7 +110,13 @@
       },
       "tan_so_vhf": { "label": "Tần số VHF", "type": "text", "required": true },
       "tan_so_hf": { "label": "Tần số HF", "type": "text", "required": true },
-      "so_di_dong": { "label": "Số di động", "type": "text", "required": true }
+      "so_di_dong": { "label": "Số di động", "type": "text", "required": true },
+      "primary_fishing_tool": {
+        "label": "Ngư cụ chính",
+        "type": "text",
+        "required": false,
+        "note": "Loại ngư cụ khai thác chính của tàu. VD: Lưới kéo, Lưới vây, Câu mực..."
+      }
     },
     "owner_info": {
       "owner_name": {
@@ -143,6 +149,12 @@
           "3": "Mã định danh cá nhân",
           "4": "Mã doanh nghiệp"
         }
+      },
+      "vessel_owner_gender": {
+        "label": "Giới tính chủ tàu",
+        "type": "text",
+        "required": false,
+        "note": "T = Nam, G = Nữ, U = Không xác định. Điền theo placeholder Viettel."
       },
       "owner_fax": {
         "label": "Số Fax chủ tàu",
@@ -463,9 +475,33 @@
       "forms": {
         "form1": {
           "_name": "Thông tin thiết bị (Device Info)",
-          "_comment": "Các trường cơ bản về thiết bị. Có một số trường static (giá trị cố định).",
+          "_comment": "Các trường cơ bản về thiết bị. Date fields điền ĐẦU TIÊN để calendar tự đóng khi click vào field tiếp theo.",
 
           "fields": {
+            "date_manufacture": {
+              "master_field": null,
+              "label_vi": "Ngày sản xuất (Form 1)",
+              "action_type": "computed_date",
+              "selector": ["#dateManufacture"],
+              "transform": "computed_date",
+              "transformOptions": {
+                "offset_days": 0,
+                "outputFormat": "DD/MM/YYYY"
+              },
+              "notes": "Điền ĐẦU TIÊN để calendar tự đóng khi bot click vào field tiếp theo."
+            },
+            "end_manufacture": {
+              "master_field": null,
+              "label_vi": "Ngày hết hạn (Form 1)",
+              "action_type": "computed_date",
+              "selector": ["#endManufacture"],
+              "transform": "computed_date",
+              "transformOptions": {
+                "offset_years": 5,
+                "outputFormat": "DD/MM/YYYY"
+              },
+              "notes": "Điền ngày hiện tại + 5 năm."
+            },
             "device_name": {
               "master_field": "ship_code",
               "label_vi": "Tên thiết bị",
@@ -496,30 +532,6 @@
               "selector": ["#fwversion"],
               "static_value": "v1.0",
               "transform": "none"
-            },
-            "date_manufacture": {
-              "master_field": null,
-              "label_vi": "Ngày sản xuất (Form 1)",
-              "action_type": "computed_date",
-              "selector": ["#dateManufacture"],
-              "transform": "computed_date",
-              "transformOptions": {
-                "offset_days": 0,
-                "outputFormat": "DD/MM/YYYY"
-              },
-              "notes": "Điền ngày hiện tại."
-            },
-            "end_manufacture": {
-              "master_field": null,
-              "label_vi": "Ngày hết hạn (Form 1)",
-              "action_type": "computed_date",
-              "selector": ["#endManufacture"],
-              "transform": "computed_date",
-              "transformOptions": {
-                "offset_years": 5,
-                "outputFormat": "DD/MM/YYYY"
-              },
-              "notes": "Điền ngày hiện tại + 5 năm."
             }
           }
         },
@@ -657,6 +669,15 @@
               },
               "notes": "Thẻ <select> HTML thông thường, dùng selectOption() với value số (1/2/3/4)."
             },
+            "vessel_owner_gender": {
+              "master_field": "vessel_owner_gender",
+              "label_vi": "Giới tính chủ tàu",
+              "action_type": "fill",
+              "selector": ["#genderShipowner"],
+              "transform": "none",
+              "required": false,
+              "notes": "Placeholder Viettel: T/G/U (T = Nam, G = Nữ, U = Không xác định)."
+            },
             "owner_fax": {
               "master_field": "owner_fax",
               "label_vi": "Số Fax chủ tàu",
@@ -676,8 +697,54 @@
 
         "form4": {
           "_name": "Thông tin tàu chi tiết (Vessel Details)",
+          "_comment": "Date fields điền ĐẦU TIÊN để calendar tự đóng khi click vào field tiếp theo.",
 
           "fields": {
+            "ngay_dang_ky": {
+              "master_field": null,
+              "label_vi": "Ngày đăng ký",
+              "action_type": "computed_date",
+              "selector": ["#ngaydangky"],
+              "transform": "computed_date",
+              "transformOptions": {
+                "offset_days": 0,
+                "outputFormat": "DD/MM/YYYY"
+              },
+              "notes": "Điền ĐẦU TIÊN để calendar tự đóng khi bot click vào field tiếp theo."
+            },
+            "ngay_het_han_dang_ky": {
+              "master_field": null,
+              "label_vi": "Ngày hết hạn đăng ký",
+              "action_type": "computed_date",
+              "selector": ["#ngayhethandangky"],
+              "transform": "computed_date",
+              "transformOptions": {
+                "offset_years": 5,
+                "outputFormat": "DD/MM/YYYY"
+              }
+            },
+            "ngay_san_xuat_tau": {
+              "master_field": null,
+              "label_vi": "Ngày sản xuất tàu (Form 4)",
+              "action_type": "computed_date",
+              "selector": ["#ngaysanxuat"],
+              "transform": "computed_date",
+              "transformOptions": {
+                "offset_days": 0,
+                "outputFormat": "DD/MM/YYYY"
+              }
+            },
+            "ngay_het_han_tau": {
+              "master_field": null,
+              "label_vi": "Ngày hết hạn tàu (Form 4)",
+              "action_type": "computed_date",
+              "selector": ["#ngayhethan"],
+              "transform": "computed_date",
+              "transformOptions": {
+                "offset_years": 5,
+                "outputFormat": "DD/MM/YYYY"
+              }
+            },
             "bien_so_tau": {
               "master_field": "bien_so_tau",
               "label_vi": "Biển số tàu",
@@ -713,27 +780,13 @@
               "selector": ["#career"],
               "transform": "none"
             },
-            "ngay_dang_ky": {
-              "master_field": null,
-              "label_vi": "Ngày đăng ký",
-              "action_type": "computed_date",
-              "selector": ["#ngaydangky"],
-              "transform": "computed_date",
-              "transformOptions": {
-                "offset_days": 0,
-                "outputFormat": "DD/MM/YYYY"
-              }
-            },
-            "ngay_het_han_dang_ky": {
-              "master_field": null,
-              "label_vi": "Ngày hết hạn đăng ký",
-              "action_type": "computed_date",
-              "selector": ["#ngayhethandangky"],
-              "transform": "computed_date",
-              "transformOptions": {
-                "offset_years": 5,
-                "outputFormat": "DD/MM/YYYY"
-              }
+            "primary_fishing_tool": {
+              "master_field": "primary_fishing_tool",
+              "label_vi": "Ngư cụ chính",
+              "action_type": "fill",
+              "selector": ["#tool"],
+              "transform": "none",
+              "required": false
             },
             "ma_cang": {
               "master_field": "ma_cang",
@@ -814,28 +867,6 @@
               "transform": "to_string",
               "fallback_static": "8",
               "notes": "Nếu master_field null hoặc rỗng, điền giá trị mặc định 8."
-            },
-            "ngay_san_xuat_tau": {
-              "master_field": null,
-              "label_vi": "Ngày sản xuất tàu (Form 4)",
-              "action_type": "computed_date",
-              "selector": ["#ngaysanxuat"],
-              "transform": "computed_date",
-              "transformOptions": {
-                "offset_days": 0,
-                "outputFormat": "DD/MM/YYYY"
-              }
-            },
-            "ngay_het_han_tau": {
-              "master_field": null,
-              "label_vi": "Ngày hết hạn tàu (Form 4)",
-              "action_type": "computed_date",
-              "selector": ["#ngayhethan"],
-              "transform": "computed_date",
-              "transformOptions": {
-                "offset_years": 5,
-                "outputFormat": "DD/MM/YYYY"
-              }
             },
             "loai_tau": {
               "master_field": null,

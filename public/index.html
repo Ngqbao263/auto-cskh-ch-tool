@@ -16,26 +16,26 @@
     <style>
         /* ─── DESIGN TOKENS ──────────────────────────────────────────────── */
         :root {
-            --navy-950: #050c1a;
-            --navy-900: #0a1628;
-            --navy-800: #0f2044;
-            --navy-700: #142858;
-            --navy-600: #1a3370;
-            --steel: #2a4a7f;
-            --steel-lt: #3d6099;
-            --amber: #f59e0b;
-            --amber-lt: #fbbf24;
-            --amber-dk: #d97706;
+            --navy-950: #f1f5f9;
+            --navy-900: #ffffff;
+            --navy-800: #e2e8f0;
+            --navy-700: #cbd5e1;
+            --navy-600: #94a3b8;
+            --steel: #64748b;
+            --steel-lt: #475569;
+            --amber: #d97706;
+            --amber-lt: #f59e0b;
+            --amber-dk: #b45309;
             --teal: #0d9488;
-            --teal-lt: #14b8a6;
-            --danger: #ef4444;
-            --success: #10b981;
-            --text-1: #e2e8f0;
-            --text-2: #94a3b8;
+            --teal-lt: #0f766e;
+            --danger: #dc2626;
+            --success: #059669;
+            --text-1: #0f172a;
+            --text-2: #334155;
             --text-3: #64748b;
-            --border: rgba(255, 255, 255, 0.08);
-            --border-focus: rgba(245, 158, 11, 0.6);
-            --glass: rgba(10, 22, 40, 0.7);
+            --border: rgba(0, 0, 0, 0.1);
+            --border-focus: rgba(217, 119, 6, 0.5);
+            --glass: #ffffff;
             --radius: 6px;
         }
 
@@ -52,9 +52,8 @@
             min-height: 100vh;
             background-color: var(--navy-950);
             background-image:
-                radial-gradient(ellipse 80% 50% at 20% -10%, rgba(20, 40, 88, 0.7) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 40% at 80% 110%, rgba(13, 148, 136, 0.12) 0%, transparent 55%),
-                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M0 60L60 0M-10 10L10 -10M50 70L70 50' stroke='rgba(255,255,255,0.018)' stroke-width='1'/%3E%3C/svg%3E");
+                radial-gradient(ellipse 80% 50% at 20% -10%, rgba(203, 213, 225, 0.5) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 110%, rgba(13, 148, 136, 0.06) 0%, transparent 55%);
             font-family: 'Inter', sans-serif;
             color: var(--text-1);
             overflow-x: hidden;
@@ -62,16 +61,7 @@
 
         /* ─── SCAN LINE OVERLAY ──────────────────────────────────────────── */
         body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background: repeating-linear-gradient(0deg,
-                    transparent,
-                    transparent 2px,
-                    rgba(0, 0, 0, 0.03) 2px,
-                    rgba(0, 0, 0, 0.03) 4px);
-            pointer-events: none;
-            z-index: 0;
+            display: none;
         }
 
         /* ─── LAYOUT ─────────────────────────────────────────────────────── */
@@ -226,14 +216,14 @@
             align-items: center;
             gap: 0.75rem;
             padding: 1rem 1.25rem;
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(0, 0, 0, 0.025);
             border-bottom: 1px solid var(--border);
             cursor: pointer;
             user-select: none;
         }
 
         .section-header:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(0, 0, 0, 0.05);
         }
 
         .section-icon {
@@ -362,8 +352,8 @@
         input[type="email"],
         select {
             width: 100%;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.15);
             border-radius: var(--radius);
             color: var(--text-1);
             font-family: 'JetBrains Mono', monospace;
@@ -376,7 +366,7 @@
         }
 
         input[type="date"] {
-            color-scheme: dark;
+            color-scheme: light;
         }
 
         input:focus,
@@ -409,7 +399,7 @@
         }
 
         select option {
-            background: var(--navy-900);
+            background: #ffffff;
             color: var(--text-1);
         }
 
@@ -418,7 +408,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(0, 0, 0, 0.03);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 0.6rem 0.75rem;
@@ -448,7 +438,7 @@
         .toggle-slider {
             position: absolute;
             inset: 0;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.15);
             border-radius: 20px;
             cursor: pointer;
             transition: background 0.2s;
@@ -461,7 +451,7 @@
             top: 3px;
             width: 14px;
             height: 14px;
-            background: var(--text-2);
+            background: #ffffff;
             border-radius: 50%;
             transition: transform 0.2s, background 0.2s;
         }
@@ -526,13 +516,13 @@
         .action-bar {
             position: sticky;
             bottom: 0;
-            background: linear-gradient(to top, var(--navy-950) 70%, transparent);
+            background: linear-gradient(to top, #f1f5f9 70%, transparent);
             padding: 1.5rem 0 0;
             margin-top: 2rem;
         }
 
         .action-inner {
-            background: var(--navy-900);
+            background: #ffffff;
             border: 1px solid var(--border);
             border-radius: 10px;
             padding: 1rem 1.25rem;
@@ -540,6 +530,7 @@
             align-items: center;
             gap: 1rem;
             flex-wrap: wrap;
+            box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.06);
         }
 
         .action-info {
@@ -565,6 +556,7 @@
         .btn-run {
             display: flex;
             align-items: center;
+            margin-left: auto;
             gap: 0.6rem;
             background: linear-gradient(135deg, var(--amber) 0%, var(--amber-dk) 100%);
             color: var(--navy-950);
@@ -615,15 +607,15 @@
 
         .btn-logs:hover {
             color: var(--text-1);
-            border-color: rgba(255, 255, 255, 0.2);
+            border-color: rgba(0, 0, 0, 0.25);
         }
 
         /* ─── SPINNER ─────────────────────────────────────────────────────── */
         .spinner {
             width: 16px;
             height: 16px;
-            border: 2px solid rgba(10, 22, 40, 0.4);
-            border-top-color: var(--navy-950);
+            border: 2px solid rgba(15, 23, 42, 0.2);
+            border-top-color: var(--text-1);
             border-radius: 50%;
             animation: spin 0.7s linear infinite;
         }
@@ -632,6 +624,65 @@
             to {
                 transform: rotate(360deg);
             }
+        }
+
+        /* ─── AUTOCOMPLETE DROPDOWN ─────────────────────────────────────── */
+        .autocomplete-list {
+            position: fixed;
+            /* fixed để thoát khỏi overflow:hidden của section-card */
+            z-index: 9999;
+            background: var(--navy-900);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            list-style: none;
+            margin: 0;
+            padding: 4px 0;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .autocomplete-list[hidden] {
+            display: none;
+        }
+
+        .autocomplete-item {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.1s;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item:hover,
+        .autocomplete-item:focus {
+            background: rgba(217, 119, 6, 0.08);
+            outline: none;
+        }
+
+        .autocomplete-item-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-1);
+        }
+
+        .autocomplete-item-phone {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            color: var(--text-3);
+        }
+
+        .autocomplete-empty {
+            padding: 10px 12px;
+            font-size: 0.8rem;
+            color: var(--text-3);
+            text-align: center;
         }
 
         /* ─── RESULT PANEL ───────────────────────────────────────────────── */
@@ -752,7 +803,7 @@
             color: var(--text-3);
             display: flex;
             justify-content: space-between;
-            background: rgba(255, 255, 255, 0.02);
+            background: rgba(0, 0, 0, 0.02);
         }
 
         /* ─── PROGRESS INDICATOR ─────────────────────────────────────────── */
@@ -793,7 +844,7 @@
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(5, 12, 26, 0.85);
+            background: rgba(15, 23, 42, 0.45);
             backdrop-filter: blur(6px);
             z-index: 100;
             display: flex;
@@ -811,7 +862,7 @@
         }
 
         .modal-box {
-            background: var(--navy-900);
+            background: #ffffff;
             border: 1px solid var(--border);
             border-radius: 10px;
             width: 100%;
@@ -821,6 +872,7 @@
             flex-direction: column;
             transform: translateY(12px);
             transition: transform 0.2s;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
         }
 
         .modal-overlay.open .modal-box {
@@ -929,17 +981,15 @@
         <!-- ── HEADER ─────────────────────────────────────────────────────────── -->
         <header class="site-header">
             <div class="header-brand">
-                <div class="brand-icon"><img src="logo-sdvico.jpg" alt=""></div>
+                <div class="brand-icon">
+                    <img src="logo-sdvico.jpg">
+                </div>
                 <div class="brand-text">
                     <div class="brand-title">SDVICO</div>
                     <div class="brand-sub">Hệ thống nhập liệu tự động</div>
                 </div>
             </div>
             <div class="header-meta">
-                <div class="status-pill">
-                    <span class="status-dot"></span>
-                    SẴN SÀNG
-                </div>
                 <div class="target-badges">
                     <span class="badge badge-cskh">CSKH</span>
                     <span class="badge badge-viettel">Cấu hình</span>
@@ -952,7 +1002,7 @@
             <div class="section-header" onclick="toggleSection('sec-ship')">
                 <div class="section-icon icon-ship">🚢</div>
                 <div class="section-title">Thông tin tàu</div>
-                <span class="section-count">25 trường</span>
+                <span class="section-count">26 trường</span>
                 <span class="section-chevron">▼</span>
             </div>
             <div class="section-body">
@@ -1002,6 +1052,10 @@
                         <label for="loai_tau">Loại tàu <label class="hint">tuỳ chọn</label></label>
                         <input type="text" id="loai_tau" placeholder="VD: TACA" value="TACA" />
                     </div>
+                    <div class="field-group">
+                        <label for="primary_fishing_tool">Ngư cụ chính <label class="hint">tuỳ chọn</label></label>
+                        <input type="text" id="primary_fishing_tool" placeholder="VD: pthanghai" value="pthanghai" />
+                    </div>
                 </div>
 
                 <div class="sub-divider">
@@ -1017,7 +1071,7 @@
                     </div>
                     <div class="field-group">
                         <label for="ma_cang_phu">Mã cảng phụ <span class="req">*</span></label>
-                        <input type="text" id="ma_cang_phu" placeholder="VD: SGN2" required data-required="true" />
+                        <input type="text" id="ma_cang_phu" placeholder="VD: SGN" required data-required="true" />
                     </div>
                     <div class="field-group">
                         <label for="tinh_thanh">Tỉnh thành <span class="req">*</span></label>
@@ -1033,56 +1087,56 @@
                 <div class="form-grid">
                     <div class="field-group">
                         <label for="tong_tai_trong">Tổng tải trọng (tấn) <span class="req">*</span></label>
-                        <input type="number" id="tong_tai_trong" placeholder="VD: 120" min="0" step="0.1" required
+                        <input type="text" id="tong_tai_trong" placeholder="VD: 120" min="0" step="0.1" required
                             data-required="true" value="0" />
                     </div>
                     <div class="field-group">
                         <label for="chieu_dai_toan_bo">Chiều dài toàn bộ (m) <span class="req">*</span></label>
-                        <input type="number" id="chieu_dai_toan_bo" placeholder="VD: 25.5" min="0" step="0.01" required
+                        <input type="text" id="chieu_dai_toan_bo" placeholder="VD: 25.5" min="0" step="0.01" required
                             data-required="true" value="0" />
                     </div>
                     <div class="field-group">
                         <label for="chieu_dai_thiet_ke">Chiều dài TK (m) <label class="hint">tuỳ chọn</label></label>
-                        <input type="number" id="chieu_dai_thiet_ke" placeholder="VD: 23.0" min="0" step="0.01"
+                        <input type="text" id="chieu_dai_thiet_ke" placeholder="VD: 23.0" min="0" step="0.01"
                             value="0" />
                     </div>
                     <div class="field-group">
                         <label for="chieu_rong">Chiều rộng (m) <span class="req">*</span></label>
-                        <input type="number" id="chieu_rong" placeholder="VD: 6.5" min="0" step="0.01" required
+                        <input type="text" id="chieu_rong" placeholder="VD: 6.5" min="0" step="0.01" required
                             data-required="true" value="0" />
                     </div>
                     <div class="field-group">
                         <label for="mon_nuoc">Mớn nước (m) <span class="req">*</span></label>
-                        <input type="number" id="mon_nuoc" placeholder="VD: 2.1" min="0" step="0.01" required
+                        <input type="text" id="mon_nuoc" placeholder="VD: 2.1" min="0" step="0.01" required
                             data-required="true" value="0" />
                     </div>
                     <div class="field-group">
                         <label for="cong_suat">Công suất (CV) <span class="req">*</span></label>
-                        <input type="number" id="cong_suat" placeholder="VD: 450" min="0" required data-required="true"
+                        <input type="text" id="cong_suat" placeholder="VD: 450" min="0" required data-required="true"
                             value="0" />
                     </div>
                     <div class="field-group">
                         <label for="so_thuyen_vien">Số thuyền viên <span class="req">*</span></label>
-                        <input type="number" id="so_thuyen_vien" placeholder="VD: 8" min="1" required
-                            data-required="true" value="8" />
+                        <input type="text" id="so_thuyen_vien" placeholder="VD: 8" min="1" required data-required="true"
+                            value="8" />
                     </div>
                     <div class="field-group">
                         <label for="dung_tich_ham_ca">Dung tích hầm cá (m³) <span class="req">*</span></label>
-                        <input type="number" id="dung_tich_ham_ca" placeholder="VD: 30" min="0" step="0.1" required
+                        <input type="text" id="dung_tich_ham_ca" placeholder="VD: 30" min="0" step="0.1" required
                             data-required="true" value="0" />
                     </div>
                     <div class="field-group">
                         <label for="van_toc_danh_bat">Vận tốc đánh bắt (kn) <span class="req">*</span></label>
-                        <input type="number" id="van_toc_danh_bat" placeholder="VD: 5.5" min="0" step="0.1" required
+                        <input type="text" id="van_toc_danh_bat" placeholder="VD: 5.5" min="0" step="0.1" required
                             data-required="true" value="0" />
                     </div>
                     <div class="field-group">
                         <label for="van_toc_tu_do">Vận tốc tự do (kn) <label class="hint">tuỳ chọn</label></label>
-                        <input type="number" id="van_toc_tu_do" placeholder="VD: 10.0" min="0" step="0.1" value="0" />
+                        <input type="text" id="van_toc_tu_do" placeholder="VD: 10.0" min="0" step="0.1" value="0" />
                     </div>
                     <div class="field-group">
                         <label for="toc_do_toi_da">Tốc độ tối đa (kn) <span class="req">*</span></label>
-                        <input type="number" id="toc_do_toi_da" placeholder="VD: 12.0" min="0" step="0.1" required
+                        <input type="text" id="toc_do_toi_da" placeholder="VD: 12.0" min="0" step="0.1" required
                             data-required="true" value="0" />
                     </div>
                 </div>
@@ -1118,7 +1172,7 @@
             <div class="section-header" onclick="toggleSection('sec-owner')">
                 <div class="section-icon icon-owner">👤</div>
                 <div class="section-title">Thông tin chủ tàu</div>
-                <span class="section-count">7 trường</span>
+                <span class="section-count">8 trường</span>
                 <span class="section-chevron">▼</span>
             </div>
             <div class="section-body">
@@ -1147,6 +1201,10 @@
                             <option value="3">Mã định danh cá nhân</option>
                             <option value="4">Mã doanh nghiệp</option>
                         </select>
+                    </div>
+                    <div class="field-group">
+                        <label for="vessel_owner_gender">Giới tính <label class="hint">tuỳ chọn</label></label>
+                        <input type="text" id="vessel_owner_gender" placeholder="VD: T" value="T" />
                     </div>
                     <div class="field-group">
                         <label for="owner_fax">Số Fax chủ tàu <span class="req">*</span></label>
@@ -1202,7 +1260,7 @@
                     </div>
                     <div class="field-group">
                         <label for="captain_gender">Giới tính <label class="hint">tuỳ chọn</label></label>
-                        <input type="text" id="captain_gender" placeholder="VD: Nam" />
+                        <input type="text" id="captain_gender" placeholder="VD: T" value="T" />
                     </div>
                     <div class="field-group">
                         <label for="captain_fax">Số Fax thuyền trưởng <span class="req">*</span></label>
@@ -1223,7 +1281,7 @@
             <div class="section-header" onclick="toggleSection('sec-request')">
                 <div class="section-icon icon-request">📋</div>
                 <div class="section-title">Người yêu cầu</div>
-                <span class="section-count">2 trường</span>
+                <span class="section-count">3 trường</span>
                 <span class="section-chevron">▼</span>
             </div>
             <div class="section-body">
@@ -1236,10 +1294,16 @@
                         </label>
                     </div>
                 </div>
-                <div class="requester-fields" id="requester-name-group">
+                <div class="requester-fields form-grid cols-2" id="requester-name-group">
                     <div class="field-group">
                         <label for="requester_name">Tên người yêu cầu <span class="req">*</span></label>
-                        <input type="text" id="requester_name" placeholder="VD: Nguyễn Văn An" />
+                        <input type="text" id="requester_name" placeholder="VD: Nguyễn Văn An" required
+                            data-required="true" autocomplete="off" />
+                    </div>
+                    <div class="field-group">
+                        <label for="requester_phone">SĐT người yêu cầu <span class="req">*</span></label>
+                        <input type="text" id="requester_phone" placeholder="VD: 0901234567" required
+                            data-required="true" />
                     </div>
                 </div>
             </div>
@@ -1286,19 +1350,23 @@
                 <div id="progress-bar"></div>
             </div>
 
+            <!-- Banner lỗi validation — hiện khi có trường bắt buộc bị bỏ trống -->
+            <div id="validation-banner"
+                style="display:none; background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; padding:0.75rem 1rem; margin-bottom:0.75rem; font-size:0.8rem; color:#b91c1c; line-height:1.6;">
+                <strong>⚠️ Vui lòng điền đầy đủ các trường bắt buộc:</strong>
+                <div id="validation-missing" style="margin-top:4px;"></div>
+            </div>
+
             <div class="action-inner">
-                <div class="action-info">
-                    <div class="action-info-title">Sẵn sàng tự động hóa</div>
-                    <div class="action-info-sub" id="action-sub">Điền form và nhấn nút để bắt đầu</div>
-                </div>
                 <button class="btn-logs" onclick="openLogsModal()" title="Xem lịch sử">
                     📂 Lịch sử
                 </button>
                 <button class="btn-run" id="btn-run" onclick="runAutomation()">
-                    <span id="btn-icon">⚡</span>
-                    <span id="btn-label">Bắt đầu Auto</span>
+                    <span id="btn-label">Bắt đầu</span>
                 </button>
             </div>
+            <p id="action-sub" style="font-size:0.75rem; color:var(--text-3); text-align:center; margin-top:6px;">Điền
+                form và nhấn nút để bắt đầu</p>
 
             <!-- Result Panel -->
             <div id="result-panel">
@@ -1400,6 +1468,7 @@
             if (cb.checked) {
                 grp.classList.add('dimmed');
                 document.getElementById('requester_name').value = '';
+                document.getElementById('requester_phone').value = '';
             } else {
                 grp.classList.remove('dimmed');
             }
@@ -1456,12 +1525,14 @@
                 tan_so_vhf: g('tan_so_vhf'),
                 tan_so_hf: g('tan_so_hf'),
                 so_di_dong: g('so_di_dong'),
+                primary_fishing_tool: g('primary_fishing_tool'),
                 // Owner info
                 owner_name: g('owner_name'),
                 owner_phone: g('owner_phone'),
                 owner_cccd: g('owner_cccd'),
                 owner_address: g('owner_address'),
                 owner_loai_ma_so: g('owner_loai_ma_so'),
+                vessel_owner_gender: g('vessel_owner_gender'),
                 owner_fax: g('owner_fax'),
                 owner_email: g('owner_email'),
                 // Captain info
@@ -1475,6 +1546,7 @@
                 // Requester
                 requester_is_owner: g('requester_is_owner'),
                 requester_name: g('requester_name'),
+                requester_phone: g('requester_phone'),
                 // Payment
                 so_thang: g('so_thang'),
                 loai_khuyen_mai: g('loai_khuyen_mai'),
@@ -1517,6 +1589,17 @@
             const missing = Object.entries(required)
                 .filter(([k]) => isEmpty(data[k]))
                 .map(([, label]) => label);
+
+            // Trường người yêu cầu: chỉ bắt buộc khi KHÔNG phải chủ tàu
+            if (!data.requester_is_owner) {
+                const requesterRequired = {
+                    requester_name: 'Tên người yêu cầu',
+                    requester_phone: 'SĐT người yêu cầu',
+                };
+                Object.entries(requesterRequired).forEach(([k, label]) => {
+                    if (isEmpty(data[k])) missing.push(label);
+                });
+            }
 
             // Trường thuyền trưởng: chỉ bắt buộc khi KHÔNG phải chủ tàu
             if (!data.captain_is_owner) {
@@ -1565,7 +1648,7 @@
 
             } else {
                 btnIcon.textContent = '⚡';
-                btnLabel.textContent = 'Bắt đầu Auto';
+                btnLabel.textContent = 'Bắt đầu';
                 sub.textContent = 'Điền form và nhấn nút để bắt đầu';
                 clearInterval(progressInterval);
                 barEl.style.width = '100%';
@@ -1623,44 +1706,610 @@
             panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
+        // ── Hiển thị lỗi kết nối / fetch ────────────────────────────────────────────
+        function showRunError(message) {
+            const banner = document.getElementById('validation-banner');
+            const bannerList = document.getElementById('validation-missing');
+            bannerList.innerHTML = message.replace(/\n/g, '<br>');
+            banner.style.display = 'block';
+            banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
         // ── MAIN: Run Automation ─────────────────────────────────────────────────────
         async function runAutomation() {
             const masterData = collectMasterData();
 
-            // Client-side validation
+            // Client-side validation — hiện banner thay vì alert()
             const missing = validateForm(masterData);
+            const banner = document.getElementById('validation-banner');
+            const bannerList = document.getElementById('validation-missing');
             if (missing.length > 0) {
-                alert(`⚠️ Vui lòng điền các trường bắt buộc:\n\n• ${missing.join('\n• ')}`);
+                bannerList.innerHTML = missing.map(f => `• ${f}`).join('<br>');
+                banner.style.display = 'block';
+                banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 return;
             }
+            banner.style.display = 'none';
 
             // Clear kết quả cũ
             document.getElementById('result-panel').classList.remove('visible');
             setLoadingState(true);
 
+            // Timeout 4 phút — khớp với request_timeout của server (3 phút automation + buffer)
+            const FETCH_TIMEOUT_MS = 4 * 60 * 1000;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
             try {
+                console.log('[runAutomation] Chuẩn bị gửi fetch...', { masterData });
                 const resp = await fetch('/api/run-automation', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ masterData }),
+                    signal: controller.signal,
                 });
 
                 const data = await resp.json();
 
                 if (!resp.ok && !data.results) {
-                    // Lỗi HTTP không có results (VD: 400 validation error)
-                    alert(`❌ Lỗi: ${data.error || 'Không xác định'}`);
+                    showRunError(`Lỗi server: ${data.error || 'Không xác định'}`);
                     return;
                 }
 
                 showResult(data);
 
             } catch (err) {
-                alert(`❌ Không thể kết nối đến server.\n\nHãy đảm bảo server đang chạy:\n  node server.js\n\nChi tiết: ${err.message}`);
+                console.error('[runAutomation] Lỗi:', err);
+                if (err.name === 'AbortError') {
+                    showRunError(`Quá thời gian chờ (${FETCH_TIMEOUT_MS / 60000} phút). Automation có thể vẫn đang chạy phía server — kiểm tra terminal.`);
+                } else {
+                    showRunError(`Không thể kết nối server. Hãy đảm bảo "node server.js" đang chạy.\n\nChi tiết: ${err.message}`);
+                }
             } finally {
+                clearTimeout(timeoutId);
                 setLoadingState(false);
             }
         }
+
+        // ── Autocomplete: Tên người yêu cầu ─────────────────────────────────────────
+        (function initRequesterAutocomplete() {
+            const input = document.getElementById('requester_name');
+            const phoneEl = document.getElementById('requester_phone');
+
+            // Tạo portal element động — tránh phụ thuộc vào thứ tự parse HTML
+            const list = document.createElement('ul');
+            list.id = 'requester-autocomplete';
+            list.className = 'autocomplete-list';
+            list.hidden = true;
+            document.body.appendChild(list);
+            let debounceTimer = null;
+
+            // ── Căn vị trí dropdown theo input (position: fixed) ──────────────────
+            function positionList() {
+                const rect = input.getBoundingClientRect();
+                list.style.top = (rect.bottom + 2) + 'px';
+                list.style.left = rect.left + 'px';
+                list.style.width = rect.width + 'px';
+            }
+
+            // ── Đóng dropdown ──────────────────────────────────────────────────────
+            function closeList() {
+                list.hidden = true;
+                list.innerHTML = '';
+            }
+
+            // ── Render danh sách gợi ý ────────────────────────────────────────────
+            function renderResults(results) {
+                list.innerHTML = '';
+                positionList();
+                if (!results.length) {
+                    list.innerHTML = '<li class="autocomplete-empty">Không tìm thấy kết quả</li>';
+                    list.hidden = false;
+                    return;
+                }
+                results.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'autocomplete-item';
+                    li.tabIndex = 0;
+                    li.innerHTML = `
+                        <span class="autocomplete-item-name">${item.name ?? ''}</span>
+                        <span class="autocomplete-item-phone">${item.phone ?? ''}</span>`;
+
+                    const select = () => {
+                        input.value = item.name ?? '';
+                        phoneEl.value = item.phone ?? '';
+                        closeList();
+                        phoneEl.focus();
+                    };
+                    li.addEventListener('click', select);
+                    li.addEventListener('keydown', e => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); }
+                        if (e.key === 'ArrowDown') { e.preventDefault(); (li.nextElementSibling ?? input).focus(); }
+                        if (e.key === 'ArrowUp') { e.preventDefault(); (li.previousElementSibling ?? input).focus(); }
+                        if (e.key === 'Escape') closeList();
+                    });
+                    list.appendChild(li);
+                });
+                list.hidden = false;
+            }
+
+            // ── Gọi API với debounce 300ms ─────────────────────────────────────────
+            input.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                const q = input.value.trim();
+                if (q.length < 2) { closeList(); return; }
+
+                debounceTimer = setTimeout(async () => {
+                    try {
+                        const resp = await fetch(`/api/search-account?q=${encodeURIComponent(q)}`);
+                        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                        const { results } = await resp.json();
+                        renderResults(results ?? []);
+                    } catch (err) {
+                        console.warn('[autocomplete] Lỗi fetch:', err.message);
+                        closeList();
+                    }
+                }, 300);
+            });
+
+            // ── Điều hướng bàn phím từ input ──────────────────────────────────────
+            input.addEventListener('keydown', e => {
+                if (e.key === 'ArrowDown' && !list.hidden) {
+                    e.preventDefault();
+                    list.querySelector('.autocomplete-item')?.focus();
+                }
+                if (e.key === 'Escape') closeList();
+            });
+
+            // ── Click ngoài dropdown → đóng ───────────────────────────────────────
+            document.addEventListener('click', e => {
+                if (!input.contains(e.target) && !list.contains(e.target)) closeList();
+            });
+
+            // ── Cập nhật vị trí khi scroll hoặc resize ────────────────────────────
+            window.addEventListener('scroll', () => { if (!list.hidden) positionList(); }, true);
+            window.addEventListener('resize', () => { if (!list.hidden) positionList(); });
+        })();
+
+        // ── Autocomplete: Mã ngành nghề (client-side, hardcode) ─────────────────────
+        (function initNganhNgheAutocomplete() {
+            const NGANH_NGHE = [
+                { name: "Cào đôi", code: "1102" }, { name: "Cào đơn", code: "1117" }, { name: "Cào nghêu lụa", code: "1030" },
+                { name: "Giã cào bay", code: "1087" }, { name: "Giã cào đôi", code: "1109" }, { name: "Kéo", code: "1082" },
+                { name: "Kéo đơn", code: "1137" }, { name: "Lưới kéo", code: "TX" }, { name: "Lưới kéo đôi trung tầng", code: "TM" },
+                { name: "Lưới kéo tôm", code: "TBS" }, { name: "Nghề lưới kéo - Lưới kéo đôi", code: "1003" },
+                { name: "Nghề lưới kéo - Lưới kéo đơn", code: "1004" }, { name: "Cản", code: "1126" },
+                { name: "Đánh bắt cá ngừ", code: "1107" }, { name: "Lưới", code: "1129" }, { name: "Lưới cá đổng", code: "1130" },
+                { name: "Lưới cản", code: "1152" }, { name: "Lưới chuồn", code: "1142" }, { name: "Lưới hố", code: "1146" },
+                { name: "Lưới rê - Hỗn hợp", code: "1054" }, { name: "Lưới xù", code: "1120" }, { name: "Nghề lưới chắn", code: "1083" },
+                { name: "Nghề lưới rê", code: "1065" }, { name: "Nghề lưới rê - Lưới cản (Rê trôi thu ngừ)", code: "1005" },
+                { name: "Nghề lưới rê - Lưới ghẹ (Rê trôi tầng đáy)", code: "1008" },
+                { name: "Nghề lưới rê - Lưới kến (lưới sĩ)", code: "1006" },
+                { name: "Nghề lưới rê - Lưới thưng (Rê trôi tầng đáy)", code: "1007" },
+                { name: "Nghề lưới rê - Rê 3 lớp", code: "1009" }, { name: "Nghề lưới rê - Rê mực", code: "1113" },
+                { name: "Rê chuồn", code: "1131" }, { name: "Rê cước tầng mặt", code: "GNF" }, { name: "Rê hỗn hợp", code: "GTN" },
+                { name: "Rê khơi", code: "1143" }, { name: "Rê mực khơi", code: "1097" }, { name: "Rê trôi tầng đáy", code: "GNS" },
+                { name: "Rê trôi tầng mặt", code: "GND" }, { name: "Lưới đèn", code: "1059" }, { name: "Lưới mành", code: "1153" },
+                { name: "Lưới rút", code: "1147" }, { name: "Lưới rút đêm", code: "1144" }, { name: "Lưới rút ngày", code: "1145" },
+                { name: "Lưới trủ", code: "1127" }, { name: "Lưới vây ánh sáng", code: "1062" },
+                { name: "Lưới vây cá nổi nhỏ", code: "1132" }, { name: "Lưới vây ngày", code: "1141" },
+                { name: "Mành", code: "1073" }, { name: "Mành chà", code: "1086" }, { name: "Mành mực", code: "1096" },
+                { name: "Nghề lưới vây", code: "SX" }, { name: "Nghề lưới vây - Vây ánh sáng (có hoặc Không chà)", code: "1011" },
+                { name: "Nghề lưới vây - Vây cá cơm (có hoặc không đèn)", code: "1012" },
+                { name: "Nghề lưới vây - Vây đảo ngời (ngày đêm)", code: "1010" },
+                { name: "Nghề lưới vây - Vây rút chì", code: "1068" }, { name: "Nghề vây ngày", code: "1053" },
+                { name: "Vây", code: "1090" }, { name: "Vây ánh sáng", code: "1101" }, { name: "Vây cá cơm", code: "SV" },
+                { name: "Vây cá ngừ", code: "1100" }, { name: "Vây mành", code: "1133" }, { name: "Vây rút", code: "1106" },
+                { name: "Vây rút khơi", code: "1154" }, { name: "Vó mành", code: "1020" }, { name: "Câu", code: "1048" },
+                { name: "Câu cá ngừ", code: "1084" }, { name: "Câu đèn", code: "1138" }, { name: "Câu khơi", code: "1070" },
+                { name: "Câu mực", code: "1099" }, { name: "Nghề câu - Câu tay cá", code: "1013" },
+                { name: "Nghề câu - Câu tay mực ống", code: "1015" }, { name: "Nghề câu - Câu tay mực xà", code: "1016" },
+                { name: "Nghề câu - Câu vàng cá ngừ", code: "1017" }, { name: "Nghề câu - Câu vàng tầng đáy", code: "1018" },
+                { name: "Chụp", code: "1112" }, { name: "Chụp 4 sào", code: "1157" }, { name: "Chụp mực", code: "1021" },
+                { name: "Lưới chụp", code: "1063" }, { name: "Mành chụp", code: "1069" }, { name: "Mành chụp mực", code: "1091" },
+                { name: "Chong đèn", code: "1111" }, { name: "Dẫn dụ NLTS", code: "1136" },
+                { name: "Dịch vụ hậu cần nghề cá", code: "1032" }, { name: "Đáy biển hàng cạn và hàng khơi", code: "1026" },
+                { name: "Đăng", code: "1025" }, { name: "Lặn", code: "1028" }, { name: "Lưới đầm", code: "1110" },
+                { name: "Nghề khác", code: "1031" }, { name: "Pha xúc", code: "1019" }, { name: "Tàu kiểm ngư", code: "1033" },
+                { name: "Te xiệp", code: "1029" }, { name: "Xúc ruốc", code: "1079" }, { name: "Bẫy ghẹ", code: "1022" },
+                { name: "Bẫy mực", code: "1023" }, { name: "Bẫy rập", code: "1024" }, { name: "Khai thác mực", code: "3" },
+                { name: "Lồng bẫy", code: "FPO" }, { name: "Lưới rập", code: "1118" }, { name: "Rập ghẹ", code: "1114" },
+                { name: "Rập ốc", code: "1148" }, { name: "Bẫy cá", code: "FYK" }, { name: "Bẫy ốc", code: "1156" },
+                { name: "Câu (Cá ngừ đại dương)", code: "1135" }, { name: "Câu kiêm lưới mành", code: "1134" },
+                { name: "Câu tay", code: "LX" }, { name: "Câu tay cá ngừ", code: "LTL" }, { name: "Câu tay mực", code: "LHM" },
+                { name: "Câu vàng", code: "LL" }, { name: "Câu vàng cá", code: "1123" }, { name: "Dịch vụ", code: "1071" },
+                { name: "Dịch vụ hậu cần", code: "1125" }, { name: "Dịch vụ hậu cần kết hợp vây", code: "1089" },
+                { name: "Dịch vụ hậu cần thủy sản", code: "1098" }, { name: "Dịch vụ kết hợp nghề vây", code: "1104" },
+                { name: "Dịch vụ thu mua", code: "1095" }, { name: "Dịch vụ thủy sản", code: "1064" },
+                { name: "Dịch vụ thủy sản kết hợp mành", code: "1076" }, { name: "Dịch vụ thủy sản kết hợp vây", code: "1077" },
+                { name: "Dịch vụ thủy sản kiêm mành mực", code: "1094" }, { name: "Đánh bắt cá chim", code: "2" },
+                { name: "Đánh bắt thủy hải sản", code: "1036" }, { name: "Đánh cá", code: "1036" },
+                { name: "Đáy sông và cửa sông", code: "1027" }, { name: "Đăng đáy", code: "TR" },
+                { name: "Giã cào", code: "1150" }, { name: "Hậu cần", code: "1122" },
+                { name: "Hậu cần đánh bắt nguồn lợi thủy sản", code: "1103" }, { name: "Hậu cần thủy sản", code: "1115" },
+                { name: "Kết hợp dịch vụ", code: "1080" }, { name: "Kết hợp vây", code: "1081" },
+                { name: "Kim câu cá ngừ", code: "1092" }, { name: "Lồng", code: "1119" },
+                { name: "Lồng bẫy (ghẹ)", code: "1116" }, { name: "Lưới đỏng", code: "1108" },
+                { name: "Lưới kéo tôm da luoi (giã sào)", code: "TMS" }, { name: "Lưới rê", code: "1151" },
+                { name: "Lưới rê cước", code: "1124" }, { name: "Lưới rê thu", code: "1159" },
+                { name: "Lưới vây cá nổi", code: "1160" }, { name: "Lưới vây đêm", code: "1149" },
+                { name: "Lưới vây kiêm câu", code: "1085" }, { name: "Lưới xăm", code: "1158" },
+                { name: "Mành chim", code: "1078" }, { name: "Mành kết hợp dịch vụ", code: "1088" },
+                { name: "Nghề lưới chụp - Chụp mực", code: "1072" }, { name: "Nghề lưới ghẹ", code: "1093" },
+                { name: "Nghề lưới rê - Bùng nhùng", code: "1075" }, { name: "Ngư cụ khác", code: "NK" },
+                { name: "Rê", code: "GN" }, { name: "Rê ba lớp", code: "GTR" }, { name: "Rê bùng nhùng", code: "1139" },
+                { name: "Rê cá lạc", code: "1105" }, { name: "Rê cản", code: "1074" }, { name: "Rê mành", code: "1155" },
+                { name: "Rê thu ngừ", code: "GNC" }, { name: "Thu mua chế biến", code: "1066" },
+                { name: "Thu mua hải sản", code: "1058" }, { name: "Vận chuyển", code: "1121" },
+                { name: "Vận chuyển hải sản", code: "1067" },
+                { name: "Vận chuyển nguồn lợi thủy sản đánh bắt", code: "1140" },
+            ];
+
+            const input = document.getElementById('ma_nganh_nghe');
+
+            // Tạo portal element động
+            const list = document.createElement('ul');
+            list.id = 'nganh-nghe-autocomplete';
+            list.className = 'autocomplete-list';
+            list.hidden = true;
+            document.body.appendChild(list);
+
+            function positionList() {
+                const rect = input.getBoundingClientRect();
+                list.style.top = (rect.bottom + 2) + 'px';
+                list.style.left = rect.left + 'px';
+                list.style.width = rect.width + 'px';
+            }
+
+            function closeList() {
+                list.hidden = true;
+                list.innerHTML = '';
+            }
+
+            function renderResults(results) {
+                list.innerHTML = '';
+                positionList();
+                if (!results.length) {
+                    list.innerHTML = '<li class="autocomplete-empty">Không tìm thấy ngành nghề</li>';
+                    list.hidden = false;
+                    return;
+                }
+                results.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'autocomplete-item';
+                    li.tabIndex = 0;
+                    li.innerHTML = `
+                        <span class="autocomplete-item-name">${item.name}</span>
+                        <span class="autocomplete-item-phone">${item.code}</span>`;
+
+                    const select = () => {
+                        input.value = item.code; // Chỉ điền Mã vào input
+                        closeList();
+                        input.blur();
+                    };
+                    li.addEventListener('click', select);
+                    li.addEventListener('keydown', e => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); }
+                        if (e.key === 'ArrowDown') { e.preventDefault(); (li.nextElementSibling ?? input).focus(); }
+                        if (e.key === 'ArrowUp') { e.preventDefault(); (li.previousElementSibling ?? input).focus(); }
+                        if (e.key === 'Escape') closeList();
+                    });
+                    list.appendChild(li);
+                });
+                list.hidden = false;
+            }
+
+            input.addEventListener('input', () => {
+                const q = input.value.trim().toLowerCase();
+                if (!q) { closeList(); return; }
+                const results = NGANH_NGHE.filter(item =>
+                    item.name.toLowerCase().includes(q) || item.code.toLowerCase().includes(q)
+                ).slice(0, 10);
+                renderResults(results);
+            });
+
+            input.addEventListener('keydown', e => {
+                if (e.key === 'ArrowDown' && !list.hidden) {
+                    e.preventDefault();
+                    list.querySelector('.autocomplete-item')?.focus();
+                }
+                if (e.key === 'Escape') closeList();
+            });
+
+            document.addEventListener('click', e => {
+                if (!input.contains(e.target) && !list.contains(e.target)) closeList();
+            });
+
+            window.addEventListener('scroll', () => { if (!list.hidden) positionList(); }, true);
+            window.addEventListener('resize', () => { if (!list.hidden) positionList(); });
+        })();
+
+        // ── Autocomplete: Mã cảng (client-side, hardcode) ───────────────────────────
+        (function initMaCangAutocomplete() {
+            const MA_CANG = [
+                { name: "Sa Kỳ (Tịnh Kỳ)", code: "CSK" }, { name: "Thử nghiệm", code: "CTN" },
+                { name: "Cảng Đà Nẵng", code: "CDN" }, { name: "Cảng Cá Mắt Rồng", code: "CMR" },
+                { name: "Cửa biển Cái Đôi Vàm", code: "CDV" }, { name: "Cửa biển Rạch Tàu", code: "RAT" },
+                { name: "Cửa biển Rạch Gốc", code: "RAG" }, { name: "Cửa biển Bồ Đề", code: "BOD" },
+                { name: "Lạch Trường", code: "260" }, { name: "Uông Bí", code: "239" },
+                { name: "Hòa Hiệp Bắc", code: "157" }, { name: "Hòa Hiệp Trung", code: "156" },
+                { name: "An Ninh Đông", code: "153" }, { name: "Cửa biển Khánh Hội", code: "KHH" },
+                { name: "Bồ Đề", code: "60" }, { name: "Nghi Sơn", code: "123" }, { name: "Hòa Thuận", code: "166" },
+                { name: "Vĩnh Kim", code: "165" }, { name: "Vĩnh Hải", code: "158" }, { name: "Hòa Hiệp Nam", code: "155" },
+                { name: "Hòa An", code: "154" }, { name: "Quan Chánh", code: "CQC" }, { name: "Lagi", code: "91" },
+                { name: "Phước Thể", code: "88" }, { name: "Rạch Giá", code: "71" }, { name: "Rạch Tàu", code: "65" },
+                { name: "Hà Lạn", code: "55" }, { name: "Cái Đôi Vàm", code: "62" }, { name: "Khâu Băng", code: "175" },
+                { name: "Hải Châu", code: "120" }, { name: "Ngư Lộc", code: "185" }, { name: "Hải Lộc", code: "264" },
+                { name: "Hải Thanh", code: "261" }, { name: "Vĩnh Lợi", code: "198" }, { name: "Quân Khu 7", code: "187" },
+                { name: "Bến Giang", code: "180" }, { name: "Đông Xuân", code: "178" }, { name: "Long Đức", code: "167" },
+                { name: "Mỹ Long", code: "164" }, { name: "Sa Cần", code: "141" }, { name: "Bến Chanh", code: "128" },
+                { name: "Hoằng Trường", code: "122" }, { name: "Vũng Tàu", code: "121" }, { name: "Hải Xuân", code: "238" },
+                { name: "Minh Lộc", code: "232" }, { name: "Quảng Cơ", code: "200" }, { name: "Bình Thạnh", code: "89" },
+                { name: "Cửa Ông", code: "125" }, { name: "An Biên", code: "252" }, { name: "Nghĩa An", code: "241" },
+                { name: "Quảng Yên", code: "233" }, { name: "Hố Gùi", code: "227" }, { name: "Mắt Rồng", code: "226" },
+                { name: "Hải Phòng", code: "225" }, { name: "Liên Hương", code: "221" }, { name: "Tiệm Tôm", code: "219" },
+                { name: "Giá Rai", code: "218" }, { name: "Quảng Ninh", code: "215" }, { name: "Cồn Vinh", code: "211" },
+                { name: "Tô Châu", code: "173" }, { name: "Dương Đông", code: "69" }, { name: "Cửa Đại", code: "132" },
+                { name: "Phú Quý", code: "93" }, { name: "Phường 6", code: "79" }, { name: "Phú Yên", code: "259" },
+                { name: "Yên Hưng", code: "234" }, { name: "Mỹ Thành", code: "230" }, { name: "Lập Lễ", code: "229" },
+                { name: "Phả Lễ", code: "224" }, { name: "Nam Hải", code: "223" }, { name: "Trà Vinh", code: "206" },
+                { name: "Cần Giờ", code: "204" }, { name: "Hà Tiên", code: "195" }, { name: "An Chấn", code: "248" },
+                { name: "Phú Quốc", code: "247" }, { name: "Sông Đò", code: "246" }, { name: "Xuân Hòa", code: "244" },
+                { name: "An Sơn", code: "240" }, { name: "Hải Phòng (210)", code: "210" }, { name: "Tuy Phong", code: "208" },
+                { name: "Bình Định", code: "207" }, { name: "Kỳ Anh", code: "205" }, { name: "Phổ Châu", code: "202" },
+                { name: "Vũng Tàu (197)", code: "197" }, { name: "Kim Sơn", code: "160" }, { name: "Cẩm Phả", code: "193" },
+                { name: "Tam Quan Bắc", code: "97" }, { name: "Lạch Thỏi", code: "245" }, { name: "Cầu Bóng", code: "242" },
+                { name: "Hải Hà", code: "237" }, { name: "Hà Cối", code: "236" }, { name: "Tam Quan Bắc (77)", code: "77" },
+                { name: "Phước Tỉnh", code: "186" }, { name: "Hòa Bình", code: "217" }, { name: "Bạc Liêu", code: "214" },
+                { name: "Hoài Nhơn", code: "213" }, { name: "Hòn Đất", code: "212" }, { name: "Long Hải", code: "194" },
+                { name: "Kiên Lương", code: "228" }, { name: "Hà Lộc", code: "190" }, { name: "Rạch Dừa", code: "189" },
+                { name: "Phước Hưng", code: "188" }, { name: "Phường Phú Đông", code: "148" },
+                { name: "Khánh Hội", code: "59" }, { name: "Cảng Biển Đông", code: "45" }, { name: "Kỳ Hà", code: "75" },
+                { name: "BD95116", code: "258" }, { name: "Phường Phú Đông (112)", code: "112" },
+                { name: "Sài Gòn", code: "203" }, { name: "Bình Thuận", code: "199" }, { name: "Duy Vinh", code: "270" },
+                { name: "Vung Long", code: "269" }, { name: "Cát Khánh", code: "231" }, { name: "Vân Đồn", code: "192" },
+                { name: "Lạch Cờn", code: "109" }, { name: "Tam Giang", code: "271" },
+                { name: "Sơn Hải", code: "253" }, { name: "Bình Châu", code: "201" }, { name: "Bến Tre", code: "209" },
+                { name: "Hưng Thái", code: "295" }, { name: "Bình Thới", code: "293" }, { name: "Phường 5", code: "294" },
+                { name: "Quảng Phú (QB)", code: "273" }, { name: "Cửa Lò", code: "275" }, { name: "Lạch Lò", code: "276" },
+                { name: "Cô Tô", code: "CTO" }, { name: "Tây Bạch Long Vĩ", code: "TLV" }, { name: "Hòn Gai", code: "CHG" },
+                { name: "Cái Rồng", code: "CCR" }, { name: "Hạ Long", code: "HAL" }, { name: "Trân Châu", code: "CTR" },
+                { name: "Ngọc Hải", code: "CNH" }, { name: "Bạch Đằng", code: "CBD" }, { name: "Cát Bà", code: "CCB" },
+                { name: "Bạch Long Vỹ", code: "BLV" }, { name: "Thụy Tân", code: "CTT" }, { name: "Cửa Lân", code: "CLA" },
+                { name: "Tân Sơn", code: "CTS" }, { name: "Ninh Cơ", code: "NIC" }, { name: "Ninh Cơ (CQV)", code: "CQV" },
+                { name: "Thịnh Lâm", code: "CTL" }, { name: "Cống Doanh Châu", code: "CDC" }, { name: "Cửa Đáy", code: "CUD" },
+                { name: "Tư Hiền", code: "TUH" }, { name: "Thuận An", code: "CTA" }, { name: "Thọ Quang", code: "THO" },
+                { name: "Đảo Nam", code: "DNA" }, { name: "Đảo Tri Tôn", code: "DTT" }, { name: "Đảo Bông Bay", code: "DBB" },
+                { name: "Đảo Hoàng Sa", code: "DHS" }, { name: "Đảo Đá Bắc", code: "DDB" }, { name: "Tam Kỳ", code: "TAK" },
+                { name: "Hồng Triều", code: "CHT" }, { name: "Cẩm Thanh", code: "CCT" }, { name: "Cù Lao Chàm", code: "CLC" },
+                { name: "Tam Quang", code: "TQA" }, { name: "An Hòa", code: "CAH" }, { name: "Tam Quan", code: "CTQ" },
+                { name: "Sa Huỳnh", code: "CSH" }, { name: "Tịnh Hòa", code: "CTH" }, { name: "Mỹ Á", code: "MYA" },
+                { name: "Lý Sơn", code: "CLS" }, { name: "Cổ Lũy", code: "CLU" }, { name: "Sông Trà Bồng", code: "STB" },
+                { name: "Cù Lao Xanh", code: "CLX" }, { name: "Quy Nhơn", code: "CQN" }, { name: "Đề Gi", code: "CDG" },
+                { name: "Cà Ná", code: "CCN" }, { name: "Ninh Chữ", code: "NCU" }, { name: "Mỹ Tân", code: "MYT" },
+                { name: "Đông Hải", code: "DHA" }, { name: "Phan Rí Cửa", code: "PRC" }, { name: "La Gi", code: "CLG" },
+                { name: "Triều Dương", code: "TDU" }, { name: "Phú Hải", code: "CPH" }, { name: "Phan Thiết", code: "PTI" },
+                { name: "Phú Lạc", code: "CPL" }, { name: "Đông Tác", code: "CDT" },
+                { name: "Cảng cá đảo Đá Tây", code: "DAT" }, { name: "Tiên Châu", code: "TCH" },
+                { name: "Dân Phước", code: "CDP" }, { name: "Hòn Khoai", code: "CHK" }, { name: "Rạch Gốc", code: "CRG" },
+                { name: "Sông Đốc", code: "SDO" }, { name: "Cà Mau", code: "CCM" }, { name: "Chợ Bình Điền", code: "BDE" },
+                { name: "Tổng Cty HS Biển Đông", code: "BID" }, { name: "Bình Khánh", code: "CBK" },
+                { name: "Hòn Mê", code: "CHM" }, { name: "Hòa Lộc", code: "CHL" }, { name: "Lạch Hới", code: "LAH" },
+                { name: "Lạch Bạng", code: "CLB" }, { name: "Lạch Vạn", code: "LVA" }, { name: "Cửa Hội", code: "CCH" },
+                { name: "Lạch Quèn", code: "CLQ" }, { name: "Cửa Nhượng", code: "CUH" },
+                { name: "Quỳnh Phương", code: "CQP" }, { name: "Thạch Kim (Cửa Sót)", code: "THK" },
+                { name: "Cửa Khẩu", code: "CCK" }, { name: "Xuân Hội", code: "XUH" }, { name: "Ròon", code: "RON" },
+                { name: "Sông Gianh", code: "CSG" }, { name: "Nhật Lệ", code: "CNL" }, { name: "Cồn Cỏ", code: "CCC" },
+                { name: "Bắc Cửa Việt", code: "BCV" }, { name: "Cửa Việt", code: "CCV" }, { name: "Cửa Tùng", code: "CTU" },
+                { name: "Hòn Rớ", code: "CHR" }, { name: "Đá Bạc", code: "CDB" }, { name: "Vĩnh Lương", code: "CVL" },
+                { name: "Đại Lãnh", code: "CDL" }, { name: "Đầm Môn", code: "CDM" }, { name: "Ninh Vân", code: "CNV" },
+                { name: "Đảo Trường Sa", code: "DTS" }, { name: "Đảo Song Tử Tây", code: "STT" },
+                { name: "Đảo Nam Yết", code: "DNY" }, { name: "Đảo Sinh Tồn", code: "DST" },
+                { name: "Đảo Phan Vinh", code: "DPV" }, { name: "Đảo An Bang", code: "DAB" },
+                { name: "Đảo Đá Thuyền Chài", code: "TCA" }, { name: "Đảo Sơn Ca", code: "DSC" },
+                { name: "Lò Than + Cơ khí tàu thuyền", code: "LTC" }, { name: "Phường 5 (Ao cá Bác Hồ)", code: "CPC" },
+                { name: "XNK Côn Đảo", code: "CDA" }, { name: "Gò Găng", code: "CGG" }, { name: "Gò Ông Sầm", code: "GOS" },
+                { name: "Bến Đầm", code: "BDA" }, { name: "Tân Phước", code: "CTP" }, { name: "Cát Lở", code: "CCL" },
+                { name: "Phước Hiệp", code: "PHI" }, { name: "Bến Lội", code: "CBL" }, { name: "Incomap", code: "INC" },
+                { name: "Hưng Thái (Lò Vôi)", code: "CLV" }, { name: "Lộc An", code: "LAN" },
+                { name: "Phường Thắng Nhì (Bến Đình)", code: "BDI" }, { name: "Bến Đá", code: "BEA" },
+                { name: "Mỹ Tho", code: "CMT" }, { name: "Vàm Láng", code: "VLA" },
+                { name: "Cảng Cá Bình Thắng", code: "CBT" }, { name: "Ba Tri", code: "BTR" },
+                { name: "Thạnh Phú", code: "TPU" }, { name: "Bình Đại", code: "BIA" }, { name: "Láng Chim", code: "LCI" },
+                { name: "Động Cao", code: "DCA" }, { name: "Định An", code: "DIA" }, { name: "Trần Đề", code: "TDE" },
+                { name: "Gành Hào", code: "CGH" }, { name: "Nhà Mát", code: "CNM" }, { name: "Bãi Dong", code: "BDO" },
+                { name: "Lình Huỳnh", code: "CLH" }, { name: "Hòn Ngang", code: "CHN" }, { name: "Gành Dầu", code: "CGD" },
+                { name: "Bãi Chướng", code: "CBC" }, { name: "Tắc Cậu", code: "CTC" }, { name: "Xẻo Nhàu", code: "CXN" },
+                { name: "Ba Hòn", code: "CBH" }, { name: "An Thới", code: "CAT" }, { name: "Đảo Thổ Châu", code: "DTC" },
+                { name: "Đảo Nam Du", code: "DND" },
+            ];
+
+            const input = document.getElementById('ma_cang');
+
+            const list = document.createElement('ul');
+            list.id = 'ma-cang-autocomplete';
+            list.className = 'autocomplete-list';
+            list.hidden = true;
+            document.body.appendChild(list);
+
+            function positionList() {
+                const rect = input.getBoundingClientRect();
+                list.style.top = (rect.bottom + 2) + 'px';
+                list.style.left = rect.left + 'px';
+                list.style.width = rect.width + 'px';
+            }
+
+            function closeList() { list.hidden = true; list.innerHTML = ''; }
+
+            function renderResults(results) {
+                list.innerHTML = '';
+                positionList();
+                if (!results.length) {
+                    list.innerHTML = '<li class="autocomplete-empty">Không tìm thấy cảng</li>';
+                    list.hidden = false;
+                    return;
+                }
+                results.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'autocomplete-item';
+                    li.tabIndex = 0;
+                    li.innerHTML = `
+                        <span class="autocomplete-item-name">${item.name}</span>
+                        <span class="autocomplete-item-phone">${item.code}</span>`;
+                    const select = () => {
+                        input.value = item.code;
+                        const phu = document.getElementById('ma_cang_phu');
+                        if (phu) phu.value = item.code;
+                        closeList();
+                        input.blur();
+                    };
+                    li.addEventListener('click', select);
+                    li.addEventListener('keydown', e => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); }
+                        if (e.key === 'ArrowDown') { e.preventDefault(); (li.nextElementSibling ?? input).focus(); }
+                        if (e.key === 'ArrowUp') { e.preventDefault(); (li.previousElementSibling ?? input).focus(); }
+                        if (e.key === 'Escape') closeList();
+                    });
+                    list.appendChild(li);
+                });
+                list.hidden = false;
+            }
+
+            input.addEventListener('input', () => {
+                const q = input.value.trim().toLowerCase();
+                if (!q) { closeList(); return; }
+                const results = MA_CANG.filter(item =>
+                    item.name.toLowerCase().includes(q) || item.code.toLowerCase().includes(q)
+                ).slice(0, 10);
+                renderResults(results);
+            });
+
+            input.addEventListener('keydown', e => {
+                if (e.key === 'ArrowDown' && !list.hidden) {
+                    e.preventDefault();
+                    list.querySelector('.autocomplete-item')?.focus();
+                }
+                if (e.key === 'Escape') closeList();
+            });
+
+            document.addEventListener('click', e => {
+                if (!input.contains(e.target) && !list.contains(e.target)) closeList();
+            });
+
+            window.addEventListener('scroll', () => { if (!list.hidden) positionList(); }, true);
+            window.addEventListener('resize', () => { if (!list.hidden) positionList(); });
+        })();
+
+        // ── Mã tỉnh Autocomplete ─────────────────────────────────────────────────────
+        (function initMaTinhAutocomplete() {
+            const MA_TINH = [
+                { name: "Toàn quốc", code: "TQ" },
+                { name: "Bắc Bộ", code: "BB" },
+                { name: "Quảng Ninh", code: "QN" },
+                { name: "Hải Phòng", code: "HP" },
+                { name: "Thái Bình", code: "TB" },
+                { name: "Nam Định", code: "NĐ" },
+                { name: "Ninh Bình", code: "NB" },
+                { name: "Trung Bộ", code: "TRB" },
+                { name: "Thừa Thiên Huế", code: "TTH" },
+                { name: "Đà Nẵng", code: "ĐNa" },
+                { name: "Quảng Nam", code: "QNa" },
+                { name: "Quảng Ngãi", code: "QNg" },
+                { name: "Bình Định", code: "BĐ" },
+                { name: "Nam Bộ", code: "NAB" },
+                { name: "Ninh Thuận", code: "NT" },
+                { name: "Bình Thuận", code: "BTh" },
+                { name: "Phú Yên", code: "PY" },
+                { name: "Cà Mau", code: "CM" },
+                { name: "Hồ Chí Minh", code: "SG" },
+                { name: "Thanh Hóa", code: "TH" },
+                { name: "Nghệ An", code: "NA" },
+                { name: "Hà Tĩnh", code: "HT" },
+                { name: "Quảng Bình", code: "QB" },
+                { name: "Quảng Trị", code: "QT" },
+                { name: "Khánh Hòa", code: "KH" },
+                { name: "Bà Rịa - Vũng Tàu", code: "BV" },
+                { name: "Tiền Giang", code: "TG" },
+                { name: "Bến Tre", code: "BT" },
+                { name: "Trà Vinh", code: "TV" },
+                { name: "Sóc Trăng", code: "ST" },
+                { name: "Bạc Liêu", code: "BL" },
+                { name: "Kiên Giang", code: "KG" },
+                { name: "Hà Nội", code: "HN" },
+                { name: "Long An", code: "LA" },
+                { name: "Cần Thơ", code: "CT" },
+                { name: "Vĩnh Long", code: "VL" },
+                { name: "Biển Đông", code: "BĐo" },
+            ];
+
+            const input = document.getElementById('tinh_thanh');
+
+            const list = document.createElement('ul');
+            list.id = 'ma-tinh-autocomplete';
+            list.className = 'autocomplete-list';
+            list.hidden = true;
+            document.body.appendChild(list);
+
+            function positionList() {
+                const rect = input.getBoundingClientRect();
+                list.style.top = (rect.bottom + 2) + 'px';
+                list.style.left = rect.left + 'px';
+                list.style.width = rect.width + 'px';
+            }
+
+            function closeList() { list.hidden = true; list.innerHTML = ''; }
+
+            function renderResults(results) {
+                list.innerHTML = '';
+                positionList();
+                if (!results.length) {
+                    list.innerHTML = '<li class="autocomplete-empty">Không tìm thấy tỉnh</li>';
+                    list.hidden = false;
+                    return;
+                }
+                results.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'autocomplete-item';
+                    li.tabIndex = 0;
+                    li.innerHTML = `
+                        <span class="autocomplete-item-name">${item.name} - ${item.code}</span>`;
+                    const select = () => { input.value = item.code; closeList(); input.blur(); };
+                    li.addEventListener('click', select);
+                    li.addEventListener('keydown', e => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); }
+                        if (e.key === 'ArrowDown') { e.preventDefault(); (li.nextElementSibling ?? input).focus(); }
+                        if (e.key === 'ArrowUp') { e.preventDefault(); (li.previousElementSibling ?? input).focus(); }
+                        if (e.key === 'Escape') closeList();
+                    });
+                    list.appendChild(li);
+                });
+                list.hidden = false;
+            }
+
+            input.addEventListener('input', () => {
+                const q = input.value.trim().toLowerCase();
+                if (!q) { closeList(); return; }
+                const results = MA_TINH.filter(item =>
+                    item.name.toLowerCase().includes(q) || item.code.toLowerCase().includes(q)
+                ).slice(0, 10);
+                renderResults(results);
+            });
+
+            input.addEventListener('keydown', e => {
+                if (e.key === 'ArrowDown' && !list.hidden) {
+                    e.preventDefault();
+                    list.querySelector('.autocomplete-item')?.focus();
+                }
+                if (e.key === 'Escape') closeList();
+            });
+
+            document.addEventListener('click', e => {
+                if (!input.contains(e.target) && !list.contains(e.target)) closeList();
+            });
+
+            window.addEventListener('scroll', () => { if (!list.hidden) positionList(); }, true);
+            window.addEventListener('resize', () => { if (!list.hidden) positionList(); });
+        })();
 
         // ── Log Modal ────────────────────────────────────────────────────────────────
         async function openLogsModal() {

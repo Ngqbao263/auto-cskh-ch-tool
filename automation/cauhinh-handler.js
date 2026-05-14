@@ -49,7 +49,7 @@ const T = {
   search_result: 2000,
   tab_switch: 1000,
   modal_open: 2000,
-  after_save: 1500,
+  after_save: 3000,
   form_load: 2500,
 };
 
@@ -58,8 +58,8 @@ const T = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Credentials đăng nhập Viettel S-Tracking (hardcode để test nhanh)
-const VIETTEL_USERNAME = ""; // ← NHỚ ĐIỀN USERNAME VÀO ĐÂY TRƯỚC KHI CHẠY
-const VIETTEL_PASSWORD = "";
+const VIETTEL_USERNAME = "sdvico_cskh"; // ← NHỚ ĐIỀN USERNAME VÀO ĐÂY TRƯỚC KHI CHẠY
+const VIETTEL_PASSWORD = "Sdvico123@";
 
 const SEL_INPUT_USERNAME = [
   'input[name="username"]',
@@ -274,7 +274,7 @@ async function clickButtonByFallback(page, selectors, label, opts = {}) {
       const el = page.locator(sel).first();
       const visible = await el.isVisible({ timeout }).catch(() => false);
       if (visible) {
-        await el.click();
+        await el.click({ timeout: 10_000 });
         console.log(`  🖱️  Click "${label}" ✔  [${sel}]`);
         return true;
       }
@@ -400,42 +400,22 @@ async function navigateToEditForm(page, masterData) {
       console.log(`  🖱️  Click nút Đăng nhập Viettel...`);
       await clickButtonByFallback(page, SEL_BTN_DANGNHAP, "Đăng nhập");
 
-      // ── Chờ redirect hoàn tất rồi mới tiếp tục ───────────────────────────
-      // waitForLoadState('networkidle') đảm bảo trang đích đã render xong JS
-      console.log(`  ⏳ Chờ redirect sau đăng nhập...`);
-      await page
-        .waitForLoadState("networkidle", { timeout: 15000 })
-        .catch(() => {
-          console.warn(`  ⚠️  networkidle timeout — thử waitForAny dashboard.`);
-        });
-
-      await waitForAny(page, SEL_POST_LOGIN_READY, "dashboard Viettel", 20000);
-
-      // Chờ 12s để bản đồ và các popup cảnh báo load xong hoàn toàn trước khi thao tác UI.
-      console.log(
-        `  ⏳ Chờ 12s để bản đồ và popup "Tàu có cảnh báo" load xong...`
-      );
-      await page.waitForTimeout(12000);
-      console.log(`  ✔ Hết 12s — UI Viettel sẵn sàng thao tác.`);
-
-      // Thử đóng popup cảnh báo (nếu có) bằng Escape trước khi thao tác menu.
-      console.log(`  🔑 Nhấn Escape để đóng popup cảnh báo (nếu đang mở)...`);
-      await page.keyboard.press("Escape");
-      await page.waitForTimeout(800);
+      // ── Chờ ngắn để server set cookie/session sau khi submit login ────────
+      // KHÔNG chờ networkidle / dashboard / bản đồ — đằng nào cũng goto() ngay.
+      // 1500ms đủ để server xử lý auth và trình duyệt nhận cookie session.
+      console.log(`  ⏳ Chờ 1.5s để session cookie kịp set...`);
+      await page.waitForTimeout(1500);
     }
   } catch (err) {
     throw new Error(`[Cấu hình] Đăng nhập Viettel thất bại: ${err.message}`);
   }
-  console.log(`  ✔ Đã vào trang chính Viettel.`);
 
-  // [Nav 3+4] Navigate trực tiếp đến /groupList — bỏ qua Bootstrap dropdown
-  // Bootstrap dùng href="" + data-toggle="dropdown" nên click không đáng tin cậy.
-  // Session cookie vẫn còn hiệu lực sau login, goto() là cách chắc chắn nhất.
+  // [Nav 3] Chuyển thẳng đến /groupList — ngắt quá trình load bản đồ nặng.
+  // goto() hủy mọi request đang pending của trang chủ, tiết kiệm ~15-20s.
   console.log(`\n  [Nav 3/8] Navigate trực tiếp → ${GROUPLIST_URL}`);
   await page.goto(GROUPLIST_URL, { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(T.page_load);
   await waitForAny(page, SEL_PAGE_NHOM_READY, "trang Danh sách nhóm", 15000);
-  console.log(`  ✔ Trang Danh sách nhóm đã tải. [Nav 3+4 hoàn tất]`);
+  console.log(`  ✔ Trang Danh sách nhóm đã tải. [Nav 3 hoàn tất]`);
 
   // [Nav 4] Tìm kiếm tàu
   console.log(`\n  [Nav 4/7] Tìm kiếm tàu "${shipCode}"...`);

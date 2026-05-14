@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Get-ChildItem -Path \"D:\\\\SDVICO\\\\auto-cskh ch-tool\" -Recurse -File | Where-Object { $_.FullName -notmatch \"node_modules\" } | Select-Object FullName)"
+      "PowerShell(Get-ChildItem -Path \"D:\\\\SDVICO\\\\auto-cskh ch-tool\" -Recurse -File | Where-Object { $_.FullName -notmatch \"node_modules\" } | Select-Object FullName)",
+      "Bash(echo.)",
+      "Bash(New-Item -Path \"D:\\\\SDVICO\\\\auto-cskh ch-tool\\\\automation\\\\cskh-db-handler.js\" -ItemType File -Force)",
+      "Bash(Out-Null)",
+      "Bash(Write-Host \"created\")",
+      "PowerShell(New-Item -Path \"D:\\\\SDVICO\\\\auto-cskh ch-tool\\\\automation\\\\cskh-db-handler.js\" -ItemType File -Force)",
+      "Bash(node -e \"require\\('./automation/cskh-db-handler.js'\\); console.log\\('✅ Syntax OK'\\)\")",
+      "Bash(node -e \"require\\('./automation/engine.js'\\); console.log\\('✅ Syntax OK'\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(pip install *)"
     ]
   }
 }

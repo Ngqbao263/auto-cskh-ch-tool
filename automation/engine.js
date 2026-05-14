@@ -49,6 +49,39 @@ const ACTION_ICONS = {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ─────────────────────────────────────────────────────────────────────────────
+// HELPER: safeFill
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * safeFill(el, value)
+ * -------------------
+ * Wrapper an toàn cho el.fill() — tự động xử lý input[type=number]:
+ *   - Nếu element là type="number" → replace dấu phẩy "," thành dấu chấm "."
+ *     (VD: "15,9" → "15.9") vì HTML number input không chấp nhận ký tự phẩy.
+ *   - Các input khác (text, tel, …) → fill nguyên giá trị gốc.
+ *
+ * Lý do cần wrapper:
+ *   Master Form đổi sang type="text" nên người dùng có thể nhập "15,9" (kiểu VN).
+ *   Giá trị đó truyền tới Playwright → fill vào ô type="number" trên Viettel → lỗi.
+ *
+ * @param {import('playwright').Locator} el
+ * @param {string} value
+ */
+async function safeFill(el, value) {
+  const inputType = await el.getAttribute("type").catch(() => null);
+  const sanitized =
+    inputType === "number"
+      ? String(value).replace(/,/g, ".")
+      : value;
+
+  if (sanitized !== value) {
+    console.log(`    🔄 type=number → replace "," → "." : "${value}" → "${sanitized}"`);
+  }
+
+  await el.fill(sanitized);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HELPER: logAction
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -209,7 +242,7 @@ async function executeAction(page, fieldConfig, masterData) {
         console.log(`    🧹 pre_action clear() đã thực thi.`);
       }
 
-      await el.fill(finalValue);
+      await safeFill(el, finalValue);
       await sleep(SHORT_PAUSE);
       break;
     }
@@ -231,7 +264,7 @@ async function executeAction(page, fieldConfig, masterData) {
       // Click vào element trước để đảm bảo focus đúng chỗ
       await el.click({ force: true });
       await sleep(100);
-      await el.fill(finalValue);
+      await safeFill(el, finalValue);
 
       // Nhấn Tab để trigger onblur → web nhận và validate dữ liệu
       await page.keyboard.press("Tab");
@@ -573,7 +606,7 @@ async function executeAction(page, fieldConfig, masterData) {
       // Bước 3: Điền vào element đích
       const destEl = await findElement(page, sel.destination);
       await destEl.waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT });
-      await destEl.fill(transformedValue);
+      await safeFill(destEl, transformedValue);
 
       console.log(`    ✔ Đã điền "${transformedValue}" vào destination.`);
       await sleep(SHORT_PAUSE);
@@ -593,7 +626,7 @@ async function executeAction(page, fieldConfig, masterData) {
 
       const el = await findElement(page, selector);
       await el.waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT });
-      await el.fill(String(static_value));
+      await safeFill(el, String(static_value));
       console.log(`    ✔ Static value "${static_value}" đã được điền.`);
       await sleep(SHORT_PAUSE);
       break;
@@ -615,7 +648,7 @@ async function executeAction(page, fieldConfig, masterData) {
 
       const el = await findElement(page, selector);
       await el.waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT });
-      await el.fill(computedValue);
+      await safeFill(el, computedValue);
       await sleep(SHORT_PAUSE);
       break;
     }
@@ -673,7 +706,7 @@ async function executeAction(page, fieldConfig, masterData) {
       }
 
       if (pre_action === "clear") await el.clear();
-      await el.fill(finalValue);
+      await safeFill(el, finalValue);
       await sleep(SHORT_PAUSE);
       break;
     }
