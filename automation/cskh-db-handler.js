@@ -44,9 +44,9 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
 });
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const RPC_NAME             = "create_connection_record"; // Gọi RPC giống web CSKH
-const DEFAULT_MONTHLY_PRICE = 385_000;                  // VNĐ
-const CREATE_BY            = "fb3b7e50-5bbd-41a1-a46f-e1b98d5798dd"; // ID admin/người tạo
+const RPC_NAME = "create_connection_record"; // Gọi RPC giống web CSKH
+const DEFAULT_MONTHLY_PRICE = 385_000; // VNĐ
+const CREATE_BY = "fb3b7e50-5bbd-41a1-a46f-e1b98d5798dd"; // ID admin/người tạo
 
 // Map giá trị Master Form → label lưu vào DB
 const PROMO_TYPE_LABEL = {
@@ -88,7 +88,7 @@ function calcPaymentSnapshot(
     originalAmount,
     discountAmount,
     finalAmount,
-    paidAmount: 0,           // Chưa thu tiền — khớp với luồng web (thu tiền riêng sau)
+    paidAmount: 0, // Chưa thu tiền — khớp với luồng web (thu tiền riêng sau)
     remainingDebt: finalAmount,
   };
 }
@@ -164,25 +164,25 @@ async function insertCSKH(masterData, testMode = false) {
   // Lưu ý: RPC không nhận captain_* hoặc serial_number.
   // Các trường đó do cauhinh-handler.js xử lý ở phía Viettel.
   const rpcParams = {
-    p_vessel_code:        masterData.ship_code     ?? null,
-    p_vessel_owner_name:  masterData.owner_name    ?? null,
-    p_vessel_owner_phone: masterData.owner_phone   ?? null,
-    p_vessel_address:     masterData.owner_address ?? null,
-    p_vessel_cccd:        masterData.owner_cccd    ?? null,
-    p_requester_name:     requesterName,
-    p_requester_phone:    requesterPhone,
-    p_months_count:       monthsCount,
-    p_promotion_type:     PROMO_TYPE_LABEL[promotionType] ?? null,
-    p_promotion_value:    promotionType !== "none" ? promotionValue : null,
-    p_monthly_price:      DEFAULT_MONTHLY_PRICE,
-    p_payment_snapshot:   paymentSnapshot,
-    p_category:           "Đấu mới",
-    p_type_fee:           "S-Tracking",
-    p_created_by:         CREATE_BY,
-    p_assigned_to:        CREATE_BY, // assigned_to = created_by theo yêu cầu
-    p_customer_id:        null,
-    p_dealer_id:          null,
-    p_description:        null,
+    p_vessel_code: masterData.ship_code ?? null,
+    p_vessel_owner_name: masterData.owner_name ?? null,
+    p_vessel_owner_phone: masterData.owner_phone ?? null,
+    p_vessel_address: masterData.owner_address ?? null,
+    p_vessel_cccd: masterData.owner_cccd ?? null,
+    p_requester_name: requesterName,
+    p_requester_phone: requesterPhone,
+    p_months_count: monthsCount,
+    p_promotion_type: PROMO_TYPE_LABEL[promotionType] ?? null,
+    p_promotion_value: promotionType !== "none" ? promotionValue : null,
+    p_monthly_price: DEFAULT_MONTHLY_PRICE,
+    p_payment_snapshot: paymentSnapshot,
+    p_category: "Đấu mới",
+    p_type_fee: "S-Tracking",
+    p_created_by: masterData.user_id ?? CREATE_BY,
+    p_assigned_to: masterData.user_id ?? CREATE_BY,
+    p_customer_id: null,
+    p_dealer_id: null,
+    p_description: null,
   };
 
   // ── 4. Test Mode: Dry run — in params, KHÔNG gọi RPC ─────────────────────
@@ -208,7 +208,14 @@ async function insertCSKH(masterData, testMode = false) {
     supabase.rpc(RPC_NAME, rpcParams),
     new Promise((_, reject) =>
       setTimeout(
-        () => reject(new Error(`[CSKH-DB] RPC timeout sau ${RPC_TIMEOUT_MS / 1000}s — Supabase không phản hồi`)),
+        () =>
+          reject(
+            new Error(
+              `[CSKH-DB] RPC timeout sau ${
+                RPC_TIMEOUT_MS / 1000
+              }s — Supabase không phản hồi`
+            )
+          ),
         RPC_TIMEOUT_MS
       )
     ),
@@ -222,13 +229,14 @@ async function insertCSKH(masterData, testMode = false) {
   // RPC trả về jsonb: { success: true, connection_id: uuid, payment_id: uuid }
   //                hoặc: { success: false, error: "message" }
   if (!data?.success) {
-    const rpcErr = data?.error ?? "RPC trả về success=false (không có thông tin lỗi).";
+    const rpcErr =
+      data?.error ?? "RPC trả về success=false (không có thông tin lỗi).";
     console.error(`  ❌ RPC logic error: ${rpcErr}`);
     throw new Error(`[CSKH-DB] RPC thất bại: ${rpcErr}`);
   }
 
   const connectionId = data.connection_id ?? null;
-  const paymentId    = data.payment_id    ?? null;
+  const paymentId = data.payment_id ?? null;
 
   console.log(`  ✅ RPC thành công!`);
   console.log(`     connection_id : ${connectionId}`);
@@ -236,14 +244,16 @@ async function insertCSKH(masterData, testMode = false) {
 
   // ── 6. UPDATE captain + serial_number (RPC không nhận các trường này) ────
   const extraFields = {
-    captain_name:    captainName,
-    captain_phone:   captainPhone,
-    captain_cccd:    captainCccd,
+    captain_name: captainName,
+    captain_phone: captainPhone,
+    captain_cccd: captainCccd,
     captain_address: captainAddress,
-    serial_number:   masterData.serial_number ?? null,
+    serial_number: masterData.serial_number ?? null,
   };
 
-  console.log(`\n  📝 Đang UPDATE captain + serial_number cho connection_id: ${connectionId}...`);
+  console.log(
+    `\n  📝 Đang UPDATE captain + serial_number cho connection_id: ${connectionId}...`
+  );
 
   const { error: updateError } = await supabase
     .from("connection_records")
@@ -251,9 +261,13 @@ async function insertCSKH(masterData, testMode = false) {
     .eq("id", connectionId);
 
   if (updateError) {
-    console.error(`  ⚠️  UPDATE captain/serial thất bại [${updateError.code}]: ${updateError.message}`);
+    console.error(
+      `  ⚠️  UPDATE captain/serial thất bại [${updateError.code}]: ${updateError.message}`
+    );
     // Không throw — phiếu đã tạo thành công, chỉ thiếu thông tin phụ
-    console.error(`  ⚠️  connection_id ${connectionId} đã tạo nhưng thiếu captain/serial.`);
+    console.error(
+      `  ⚠️  connection_id ${connectionId} đã tạo nhưng thiếu captain/serial.`
+    );
   } else {
     console.log(`  ✅ UPDATE captain + serial_number thành công.`);
   }
@@ -267,7 +281,7 @@ async function insertCSKH(masterData, testMode = false) {
     duration_ms: duration,
     test_mode: false,
     inserted_id: connectionId, // Tương thích với server.js (val.inserted_id)
-    payment_id:  paymentId,
+    payment_id: paymentId,
   };
 }
 

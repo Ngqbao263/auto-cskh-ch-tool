@@ -24,11 +24,16 @@ const { insertCSKH } = require("./automation/cskh-db-handler"); // DB insert
 const { runCauhinh } = require("./automation/cauhinh-handler"); // Playwright
 
 // Supabase client dùng cho các API nhẹ (search, lookup) — không phải automation
-const _supabaseUrl = (process.env.SUPABASE_URL || "").replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
+const _supabaseUrl = (process.env.SUPABASE_URL || "")
+  .replace(/\/rest\/v1\/?$/, "")
+  .replace(/\/$/, "");
 const _supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const supabase = _supabaseUrl && _supabaseKey
-  ? createClient(_supabaseUrl, _supabaseKey, { auth: { persistSession: false } })
-  : null;
+const supabase =
+  _supabaseUrl && _supabaseKey
+    ? createClient(_supabaseUrl, _supabaseKey, {
+        auth: { persistSession: false },
+      })
+    : null;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIG — Chỉnh tại đây, không cần sửa code bên dưới
@@ -143,6 +148,44 @@ function formatSettledResult(settledResult, label) {
     message: `${label} thất bại.`,
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API: POST /api/login
+// Xác thực người dùng qua Supabase Auth.
+// Nhận { username, password } — tự ghép domain thành email đầy đủ.
+// ─────────────────────────────────────────────────────────────────────────────
+const LOGIN_DOMAIN = process.env.LOGIN_DOMAIN || "@sdvico.local";
+
+app.post("/api/login", async (req, res) => {
+  const { username, password } = req.body ?? {};
+  if (!username || !password) {
+    return res.status(400).json({ error: "Thiếu username hoặc password." });
+  }
+  if (!supabase) {
+    return res.status(503).json({ error: "Supabase chưa được cấu hình." });
+  }
+
+  const email = username.includes("@") ? username : username + LOGIN_DOMAIN;
+
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) {
+      console.warn(`[login] Thất bại cho "${username}": ${error.message}`);
+      return res
+        .status(401)
+        .json({ error: "Tên đăng nhập hoặc mật khẩu không đúng." });
+    }
+    const id = data.user?.id ?? null;
+    console.log(`[login] ✅ "${username}" đăng nhập thành công — id: ${id}`);
+    return res.json({ id, username });
+  } catch (err) {
+    console.error(`[login] Lỗi server: ${err.message}`);
+    return res.status(500).json({ error: "Lỗi server nội bộ." });
+  }
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API: GET /api/search-account?q=...

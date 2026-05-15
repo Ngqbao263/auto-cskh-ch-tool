@@ -626,6 +626,157 @@
             }
         }
 
+        /* ─── LOGIN OVERLAY ─────────────────────────────────────────────── */
+        #login-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background: var(--navy-950);
+            background-image:
+                radial-gradient(ellipse 80% 50% at 20% -10%, rgba(203,213,225,0.5) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 110%, rgba(13,148,136,0.06) 0%, transparent 55%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #login-overlay.hidden { display: none; }
+
+        .login-card {
+            background: var(--navy-900);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2.5rem 2rem;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+        }
+
+        .login-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.75rem;
+        }
+
+        .login-logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius);
+            object-fit: cover;
+        }
+
+        .login-logo-title {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 1.2rem;
+            color: var(--text-1);
+            line-height: 1;
+        }
+
+        .login-logo-sub {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--amber);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-top: 3px;
+        }
+
+        .login-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-1);
+            margin-bottom: 0.25rem;
+        }
+
+        .login-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-3);
+            margin-bottom: 1.5rem;
+        }
+
+        .login-field {
+            margin-bottom: 1rem;
+        }
+
+        .login-field label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-2);
+            margin-bottom: 5px;
+        }
+
+        .login-field input {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 0.85rem;
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--navy-900);
+            color: var(--text-1);
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .login-field input:focus {
+            border-color: var(--amber);
+        }
+
+        #login-error {
+            font-size: 0.75rem;
+            color: var(--danger);
+            margin-bottom: 0.75rem;
+            min-height: 1rem;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 10px;
+            background: var(--amber);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: background 0.15s;
+        }
+
+        .btn-login:hover:not(:disabled) { background: var(--amber-dk); }
+        .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* ─── HEADER USER PILL ───────────────────────────────────────────── */
+        .user-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(217,119,6,0.08);
+            border: 1px solid rgba(217,119,6,0.2);
+            border-radius: 100px;
+            padding: 4px 10px 4px 12px;
+            font-size: 0.72rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--amber-dk);
+        }
+
+        .btn-logout {
+            background: none;
+            border: 1px solid rgba(217,119,6,0.3);
+            border-radius: 100px;
+            padding: 2px 8px;
+            font-size: 0.65rem;
+            color: var(--amber-dk);
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: background 0.15s;
+        }
+
+        .btn-logout:hover { background: rgba(217,119,6,0.12); }
+
         /* ─── AUTOCOMPLETE DROPDOWN ─────────────────────────────────────── */
         .autocomplete-list {
             position: fixed;
@@ -976,6 +1127,36 @@
 </head>
 
 <body>
+
+    <!-- ── LOGIN OVERLAY ──────────────────────────────────────────────────── -->
+    <div id="login-overlay">
+        <div class="login-card">
+            <div class="login-logo">
+                <img src="logo-sdvico.jpg" alt="SDVICO" />
+                <div>
+                    <div class="login-logo-title">SDVICO</div>
+                    <div class="login-logo-sub">Hệ thống nhập liệu tự động</div>
+                </div>
+            </div>
+            <div class="login-title">Đăng nhập</div>
+            <div class="login-subtitle">Nhập thông tin tài khoản để tiếp tục</div>
+            <form id="login-form" autocomplete="on">
+                <div class="login-field">
+                    <label for="login-username">Tên đăng nhập</label>
+                    <input type="text" id="login-username" name="username"
+                        placeholder="Nhập tên tài khoản" autocomplete="username" required />
+                </div>
+                <div class="login-field">
+                    <label for="login-password">Mật khẩu</label>
+                    <input type="password" id="login-password" name="password"
+                        placeholder="••••••••" autocomplete="current-password" required />
+                </div>
+                <div id="login-error"></div>
+                <button type="submit" class="btn-login" id="btn-login">Đăng nhập</button>
+            </form>
+        </div>
+    </div>
+
     <div class="wrapper">
 
         <!-- ── HEADER ─────────────────────────────────────────────────────────── -->
@@ -993,6 +1174,10 @@
                 <div class="target-badges">
                     <span class="badge badge-cskh">CSKH</span>
                     <span class="badge badge-viettel">Cấu hình</span>
+                </div>
+                <div class="user-pill" id="user-pill" style="display:none;">
+                    <span id="user-pill-name"></span>
+                    <button class="btn-logout" id="btn-logout">Đăng xuất</button>
                 </div>
             </div>
         </header>
@@ -1450,29 +1635,90 @@
         }
 
         // ── Toggle: Captain is Owner ─────────────────────────────────────────────────
+        // Map: owner field → captain field
+        const CAPTAIN_OWNER_MAP = [
+            ['owner_name',          'captain_name'],
+            ['owner_phone',         'captain_phone'],
+            ['owner_cccd',          'captain_cccd'],
+            ['vessel_owner_gender', 'captain_gender'],
+            ['owner_fax',           'captain_fax'],
+            ['owner_address',       'captain_address'],
+        ];
+
+        function syncOwnerToCaptain() {
+            CAPTAIN_OWNER_MAP.forEach(([srcId, dstId]) => {
+                const src = document.getElementById(srcId);
+                const dst = document.getElementById(dstId);
+                if (src && dst) dst.value = src.value;
+            });
+        }
+
         function handleCaptainToggle(cb) {
             const grid = document.getElementById('captain-fields-grid');
             if (cb.checked) {
                 grid.classList.add('dimmed');
-                // Clear fields khi toggle on (sẽ được copy tự động bởi engine)
-                ['captain_name', 'captain_phone', 'captain_cccd', 'captain_address', 'captain_gender', 'captain_fax']
-                    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+                syncOwnerToCaptain();
+                // Disable các field để user biết đang được tự động fill
+                CAPTAIN_OWNER_MAP.forEach(([, dstId]) => {
+                    const el = document.getElementById(dstId);
+                    if (el) el.disabled = true;
+                });
             } else {
                 grid.classList.remove('dimmed');
+                CAPTAIN_OWNER_MAP.forEach(([, dstId]) => {
+                    const el = document.getElementById(dstId);
+                    if (el) el.disabled = false;
+                });
             }
         }
 
+        // Khi user chỉnh owner fields thì tự cập nhật captain fields nếu toggle đang bật
+        CAPTAIN_OWNER_MAP.forEach(([srcId]) => {
+            const src = document.getElementById(srcId);
+            if (src) src.addEventListener('input', () => {
+                if (document.getElementById('captain_is_owner')?.checked) syncOwnerToCaptain();
+            });
+        });
+
         // ── Toggle: Requester is Owner ───────────────────────────────────────────────
+        const REQUESTER_OWNER_MAP = [
+            ['owner_name',  'requester_name'],
+            ['owner_phone', 'requester_phone'],
+        ];
+
+        function syncOwnerToRequester() {
+            REQUESTER_OWNER_MAP.forEach(([srcId, dstId]) => {
+                const src = document.getElementById(srcId);
+                const dst = document.getElementById(dstId);
+                if (src && dst) dst.value = src.value;
+            });
+        }
+
         function handleRequesterToggle(cb) {
             const grp = document.getElementById('requester-name-group');
             if (cb.checked) {
                 grp.classList.add('dimmed');
-                document.getElementById('requester_name').value = '';
-                document.getElementById('requester_phone').value = '';
+                syncOwnerToRequester();
+                REQUESTER_OWNER_MAP.forEach(([, dstId]) => {
+                    const el = document.getElementById(dstId);
+                    if (el) el.disabled = true;
+                });
             } else {
                 grp.classList.remove('dimmed');
+                REQUESTER_OWNER_MAP.forEach(([, dstId]) => {
+                    const el = document.getElementById(dstId);
+                    if (el) el.disabled = false;
+                });
             }
         }
+
+        // Khi user chỉnh owner fields thì tự cập nhật requester fields nếu toggle đang bật
+        REQUESTER_OWNER_MAP.forEach(([srcId]) => {
+            const src = document.getElementById(srcId);
+            if (src) src.addEventListener('input', () => {
+                if (document.getElementById('requester_is_owner')?.checked) syncOwnerToRequester();
+            });
+        });
 
         // ── Promo type change ────────────────────────────────────────────────────────
         function handlePromoChange(sel) {
@@ -1715,6 +1961,12 @@
         // ── MAIN: Run Automation ─────────────────────────────────────────────────────
         async function runAutomation() {
             const masterData = collectMasterData();
+
+            // Gắn user_id từ localStorage vào payload
+            try {
+                const u = JSON.parse(localStorage.getItem('sdvico_user'));
+                if (u?.id) masterData.user_id = u.id;
+            } catch { /* không làm gì */ }
 
             // Client-side validation — hiện banner thay vì alert()
             const missing = validateForm(masterData);
@@ -2532,6 +2784,76 @@
             // ESC to close modal
             document.addEventListener('keydown', e => {
                 if (e.key === 'Escape') closeLogsModalDirect();
+            });
+
+            // ── Auth: kiểm tra localStorage lúc khởi động ────────────────────────
+            const STORAGE_KEY = 'sdvico_user';
+
+            function getStoredUser() {
+                try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || null; }
+                catch { return null; }
+            }
+
+            function showApp(user) {
+                document.getElementById('login-overlay').classList.add('hidden');
+                document.getElementById('user-pill').style.display = 'flex';
+                document.getElementById('user-pill-name').textContent = '👤 ' + user.username;
+            }
+
+            function showLogin() {
+                document.getElementById('login-overlay').classList.remove('hidden');
+                document.getElementById('user-pill').style.display = 'none';
+            }
+
+            // Khởi động: nếu đã có session thì show app, không thì show login
+            const storedUser = getStoredUser();
+            if (storedUser?.id && storedUser?.username) {
+                showApp(storedUser);
+            } else {
+                showLogin();
+            }
+
+            // ── Login form submit ─────────────────────────────────────────────────
+            document.getElementById('login-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('login-username').value.trim();
+                const password = document.getElementById('login-password').value;
+                const errEl    = document.getElementById('login-error');
+                const btnEl    = document.getElementById('btn-login');
+
+                errEl.textContent = '';
+                btnEl.disabled = true;
+                btnEl.textContent = 'Đang đăng nhập...';
+
+                try {
+                    const resp = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password }),
+                    });
+                    const data = await resp.json();
+
+                    if (!resp.ok) {
+                        errEl.textContent = data.error || 'Đăng nhập thất bại.';
+                        return;
+                    }
+
+                    // Lưu session vào localStorage
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({ id: data.id, username: data.username }));
+                    showApp(data);
+
+                } catch (err) {
+                    errEl.textContent = 'Không thể kết nối server.';
+                } finally {
+                    btnEl.disabled = false;
+                    btnEl.textContent = 'Đăng nhập';
+                }
+            });
+
+            // ── Logout ───────────────────────────────────────────────────────────
+            document.getElementById('btn-logout').addEventListener('click', () => {
+                localStorage.removeItem(STORAGE_KEY);
+                location.reload();
             });
         });
     </script>
