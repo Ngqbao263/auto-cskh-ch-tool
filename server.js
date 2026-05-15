@@ -169,6 +169,56 @@ app.get("/api/search-account", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// API: GET /api/search-ship?q=...
+// Tìm kiếm tương đối trong bảng vnf_data theo cột so_dang_ky (ilike), trả về mảng mã tàu
+// ─────────────────────────────────────────────────────────────────────────────
+app.get("/api/search-ship", async (req, res) => {
+  const q = (req.query.q ?? "").trim();
+  if (!q) return res.json({ results: [] });
+  if (!supabase) {
+    return res.status(503).json({ error: "Supabase chưa được cấu hình." });
+  }
+  try {
+    const { data, error } = await supabase
+      .from("vnf_data")
+      .select("so_dang_ky")
+      .ilike("so_dang_ky", `%${q}%`)
+      .limit(10);
+    if (error) throw error;
+    const results = (data ?? []).map((r) => r.so_dang_ky).filter(Boolean);
+    res.json({ results });
+  } catch (err) {
+    console.error(`[search-ship] Lỗi: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API: GET /api/search-serial?q=...
+// Tìm kiếm tương đối trong bảng order_item_serials theo cột serial_number (ilike)
+// ─────────────────────────────────────────────────────────────────────────────
+app.get("/api/search-serial", async (req, res) => {
+  const q = (req.query.q ?? "").trim();
+  if (!q) return res.json({ results: [] });
+  if (!supabase) {
+    return res.status(503).json({ error: "Supabase chưa được cấu hình." });
+  }
+  try {
+    const { data, error } = await supabase
+      .from("order_item_serials")
+      .select("serial_number")
+      .ilike("serial_number", `%${q}%`)
+      .limit(10);
+    if (error) throw error;
+    const results = (data ?? []).map((r) => r.serial_number).filter(Boolean);
+    res.json({ results });
+  } catch (err) {
+    console.error(`[search-serial] Lỗi: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // API: POST /api/run-automation
 // ─────────────────────────────────────────────────────────────────────────────
 app.post("/api/run-automation", async (req, res) => {

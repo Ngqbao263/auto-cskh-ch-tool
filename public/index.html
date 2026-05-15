@@ -1623,7 +1623,6 @@
 
         function setLoadingState(loading) {
             const btn = document.getElementById('btn-run');
-            const btnIcon = document.getElementById('btn-icon');
             const btnLabel = document.getElementById('btn-label');
             const sub = document.getElementById('action-sub');
             const bar = document.getElementById('progress-bar-wrap');
@@ -1632,7 +1631,6 @@
             btn.disabled = loading;
 
             if (loading) {
-                btnIcon.innerHTML = '<div class="spinner"></div>';
                 btnLabel.textContent = 'Đang chạy...';
                 sub.textContent = '🤖 Robot đang thao tác — vui lòng không đóng cửa sổ này';
                 bar.classList.add('visible');
@@ -1647,7 +1645,6 @@
                 }, 300);
 
             } else {
-                btnIcon.textContent = '⚡';
                 btnLabel.textContent = 'Bắt đầu';
                 sub.textContent = 'Điền form và nhấn nút để bắt đầu';
                 clearInterval(progressInterval);
@@ -1772,6 +1769,172 @@
         }
 
         // ── Autocomplete: Tên người yêu cầu ─────────────────────────────────────────
+        // ── Mã tàu Autocomplete (server-side) ───────────────────────────────────────
+        (function initShipCodeAutocomplete() {
+            const input   = document.getElementById('ship_code');
+            const bienSo  = document.getElementById('bien_so_tau');
+
+            const list = document.createElement('ul');
+            list.id = 'ship-code-autocomplete';
+            list.className = 'autocomplete-list';
+            list.hidden = true;
+            document.body.appendChild(list);
+            let debounceTimer = null;
+
+            function positionList() {
+                const rect = input.getBoundingClientRect();
+                list.style.top   = (rect.bottom + 2) + 'px';
+                list.style.left  = rect.left + 'px';
+                list.style.width = rect.width + 'px';
+            }
+
+            function closeList() { list.hidden = true; list.innerHTML = ''; }
+
+            function renderResults(results) {
+                list.innerHTML = '';
+                positionList();
+                if (!results.length) {
+                    list.innerHTML = '<li class="autocomplete-empty">Không tìm thấy mã tàu</li>';
+                    list.hidden = false;
+                    return;
+                }
+                results.forEach(code => {
+                    const li = document.createElement('li');
+                    li.className = 'autocomplete-item';
+                    li.tabIndex = 0;
+                    li.innerHTML = `<span class="autocomplete-item-name">${code}</span>`;
+                    const select = () => {
+                        input.value  = code;
+                        if (bienSo) bienSo.value = code;
+                        closeList();
+                        input.blur();
+                    };
+                    li.addEventListener('click', select);
+                    li.addEventListener('keydown', e => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); }
+                        if (e.key === 'ArrowDown') { e.preventDefault(); (li.nextElementSibling ?? input).focus(); }
+                        if (e.key === 'ArrowUp')   { e.preventDefault(); (li.previousElementSibling ?? input).focus(); }
+                        if (e.key === 'Escape')    closeList();
+                    });
+                    list.appendChild(li);
+                });
+                list.hidden = false;
+            }
+
+            input.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                const q = input.value.trim();
+                if (q.length < 2) { closeList(); return; }
+
+                debounceTimer = setTimeout(async () => {
+                    try {
+                        const resp = await fetch(`/api/search-ship?q=${encodeURIComponent(q)}`);
+                        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                        const { results } = await resp.json();
+                        renderResults(results ?? []);
+                    } catch (err) {
+                        console.warn('[ship-autocomplete] Lỗi fetch:', err.message);
+                        closeList();
+                    }
+                }, 300);
+            });
+
+            input.addEventListener('keydown', e => {
+                if (e.key === 'ArrowDown' && !list.hidden) {
+                    e.preventDefault();
+                    list.querySelector('.autocomplete-item')?.focus();
+                }
+                if (e.key === 'Escape') closeList();
+            });
+
+            document.addEventListener('click', e => {
+                if (!input.contains(e.target) && !list.contains(e.target)) closeList();
+            });
+
+            window.addEventListener('scroll', () => { if (!list.hidden) positionList(); }, true);
+            window.addEventListener('resize', () => { if (!list.hidden) positionList(); });
+        })();
+
+        // ── Serial Number Autocomplete (server-side) ─────────────────────────────────
+        (function initSerialAutocomplete() {
+            const input = document.getElementById('serial_number');
+
+            const list = document.createElement('ul');
+            list.id = 'serial-autocomplete';
+            list.className = 'autocomplete-list';
+            list.hidden = true;
+            document.body.appendChild(list);
+            let debounceTimer = null;
+
+            function positionList() {
+                const rect = input.getBoundingClientRect();
+                list.style.top   = (rect.bottom + 2) + 'px';
+                list.style.left  = rect.left + 'px';
+                list.style.width = rect.width + 'px';
+            }
+
+            function closeList() { list.hidden = true; list.innerHTML = ''; }
+
+            function renderResults(results) {
+                list.innerHTML = '';
+                positionList();
+                if (!results.length) {
+                    list.innerHTML = '<li class="autocomplete-empty">Không tìm thấy serial</li>';
+                    list.hidden = false;
+                    return;
+                }
+                results.forEach(serial => {
+                    const li = document.createElement('li');
+                    li.className = 'autocomplete-item';
+                    li.tabIndex = 0;
+                    li.innerHTML = `<span class="autocomplete-item-name">${serial}</span>`;
+                    const select = () => { input.value = serial; closeList(); input.blur(); };
+                    li.addEventListener('click', select);
+                    li.addEventListener('keydown', e => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); }
+                        if (e.key === 'ArrowDown') { e.preventDefault(); (li.nextElementSibling ?? input).focus(); }
+                        if (e.key === 'ArrowUp')   { e.preventDefault(); (li.previousElementSibling ?? input).focus(); }
+                        if (e.key === 'Escape')    closeList();
+                    });
+                    list.appendChild(li);
+                });
+                list.hidden = false;
+            }
+
+            input.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                const q = input.value.trim();
+                if (q.length < 2) { closeList(); return; }
+
+                debounceTimer = setTimeout(async () => {
+                    try {
+                        const resp = await fetch(`/api/search-serial?q=${encodeURIComponent(q)}`);
+                        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                        const { results } = await resp.json();
+                        renderResults(results ?? []);
+                    } catch (err) {
+                        console.warn('[serial-autocomplete] Lỗi fetch:', err.message);
+                        closeList();
+                    }
+                }, 300);
+            });
+
+            input.addEventListener('keydown', e => {
+                if (e.key === 'ArrowDown' && !list.hidden) {
+                    e.preventDefault();
+                    list.querySelector('.autocomplete-item')?.focus();
+                }
+                if (e.key === 'Escape') closeList();
+            });
+
+            document.addEventListener('click', e => {
+                if (!input.contains(e.target) && !list.contains(e.target)) closeList();
+            });
+
+            window.addEventListener('scroll', () => { if (!list.hidden) positionList(); }, true);
+            window.addEventListener('resize', () => { if (!list.hidden) positionList(); });
+        })();
+
         (function initRequesterAutocomplete() {
             const input = document.getElementById('requester_name');
             const phoneEl = document.getElementById('requester_phone');
