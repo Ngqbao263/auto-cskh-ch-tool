@@ -541,16 +541,13 @@
 
           "fields": {
             "captain_birthday": {
-              "master_field": null,
+              "master_field": "captain_birthday",
               "label_vi": "Ngày sinh thuyền trưởng",
-              "action_type": "computed_date",
+              "action_type": "fill",
               "selector": ["#birthdayCaptain"],
-              "transform": "computed_date",
-              "transformOptions": {
-                "offset_days": 0,
-                "outputFormat": "DD/MM/YYYY"
-              },
-              "notes": "Điền ĐẦU TIÊN để calendar tự đóng khi bot click vào field tiếp theo."
+              "transform": "none",
+              "required": false,
+              "notes": "Điền ĐẦU TIÊN để calendar tự đóng khi bot click vào field tiếp theo. Format: DD/MM/YYYY."
             },
             "captain_name": {
               "master_field": "captain_name",
@@ -612,16 +609,13 @@
 
           "fields": {
             "owner_birthday": {
-              "master_field": null,
+              "master_field": "owner_birthday",
               "label_vi": "Ngày sinh chủ tàu",
-              "action_type": "computed_date",
+              "action_type": "fill",
               "selector": ["#birthdayShipowner"],
-              "transform": "computed_date",
-              "transformOptions": {
-                "offset_days": 0,
-                "outputFormat": "DD/MM/YYYY"
-              },
-              "notes": "Điền ĐẦU TIÊN để calendar tự đóng khi bot click vào field tiếp theo."
+              "transform": "none",
+              "required": false,
+              "notes": "Điền ĐẦU TIÊN để calendar tự đóng khi bot click vào field tiếp theo. Format: DD/MM/YYYY."
             },
             "owner_name": {
               "master_field": "owner_name",

@@ -1357,7 +1357,7 @@
             <div class="section-header" onclick="toggleSection('sec-owner')">
                 <div class="section-icon icon-owner">👤</div>
                 <div class="section-title">Thông tin chủ tàu</div>
-                <span class="section-count">8 trường</span>
+                <span class="section-count">9 trường</span>
                 <span class="section-chevron">▼</span>
             </div>
             <div class="section-body">
@@ -1400,6 +1400,11 @@
                         <input type="email" id="owner_email" placeholder="VD: owner@gmail.com" required
                             data-required="true" />
                     </div>
+                    <div class="field-group">
+                        <label for="owner_birthday">Ngày sinh chủ tàu <label class="hint">tuỳ chọn</label></label>
+                        <input type="text" id="owner_birthday" placeholder="VD: 01/01/1970" maxlength="10"
+                            oninput="formatBirthdayInput(this)" />
+                    </div>
                     <div class="field-group full">
                         <label for="owner_address">Địa chỉ chủ tàu <span class="req">*</span></label>
                         <input type="text" id="owner_address" placeholder="VD: 123 Đường Biển, TP Quảng Ngãi" required
@@ -1414,7 +1419,7 @@
             <div class="section-header" onclick="toggleSection('sec-captain')">
                 <div class="section-icon icon-captain">🧭</div>
                 <div class="section-title">Thông tin thuyền trưởng</div>
-                <span class="section-count">7 trường</span>
+                <span class="section-count">8 trường</span>
                 <span class="section-chevron">▼</span>
             </div>
             <div class="section-body">
@@ -1446,6 +1451,11 @@
                     <div class="field-group">
                         <label for="captain_gender">Giới tính <label class="hint">tuỳ chọn</label></label>
                         <input type="text" id="captain_gender" placeholder="VD: T" value="T" />
+                    </div>
+                    <div class="field-group">
+                        <label for="captain_birthday">Ngày sinh thuyền trưởng <label class="hint">tuỳ chọn</label></label>
+                        <input type="text" id="captain_birthday" placeholder="VD: 01/01/1970" maxlength="10"
+                            oninput="formatBirthdayInput(this)" />
                     </div>
                     <div class="field-group">
                         <label for="captain_fax">Số Fax thuyền trưởng <span class="req">*</span></label>
@@ -1611,6 +1621,19 @@
         }
 
         // ── Auto-sync: copy giá trị từ field nguồn sang field đích khi người dùng gõ ──
+        // ── Auto-format ngày sinh: gõ 01011970 → 01/01/1970 ────────────────────────
+        function formatBirthdayInput(el) {
+            const pos = el.selectionStart;
+            const digits = el.value.replace(/\D/g, '').slice(0, 8);
+            let formatted = digits;
+            if (digits.length > 4)      formatted = digits.slice(0,2) + '/' + digits.slice(2,4) + '/' + digits.slice(4);
+            else if (digits.length > 2) formatted = digits.slice(0,2) + '/' + digits.slice(2);
+            el.value = formatted;
+            // Giữ cursor ở cuối nếu đang thêm, hoặc giữ nguyên vị trí nếu đang xoá
+            const newPos = formatted.length >= pos ? formatted.length : pos;
+            el.setSelectionRange(newPos, newPos);
+        }
+
         function syncField(srcId, dstId) {
             const dst = document.getElementById(dstId);
             if (dst) dst.value = document.getElementById(srcId).value;
@@ -1641,6 +1664,7 @@
             ['owner_phone',         'captain_phone'],
             ['owner_cccd',          'captain_cccd'],
             ['vessel_owner_gender', 'captain_gender'],
+            ['owner_birthday',      'captain_birthday'],
             ['owner_fax',           'captain_fax'],
             ['owner_address',       'captain_address'],
         ];
@@ -1779,6 +1803,7 @@
                 owner_address: g('owner_address'),
                 owner_loai_ma_so: g('owner_loai_ma_so'),
                 vessel_owner_gender: g('vessel_owner_gender'),
+                owner_birthday: g('owner_birthday'),
                 owner_fax: g('owner_fax'),
                 owner_email: g('owner_email'),
                 // Captain info
@@ -1788,6 +1813,7 @@
                 captain_cccd: g('captain_cccd'),
                 captain_address: g('captain_address'),
                 captain_gender: g('captain_gender'),
+                captain_birthday: g('captain_birthday'),
                 captain_fax: g('captain_fax'),
                 // Requester
                 requester_is_owner: g('requester_is_owner'),

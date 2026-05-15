@@ -40,7 +40,7 @@ const supabase =
 // ─────────────────────────────────────────────────────────────────────────────
 const CONFIG = {
   port: 3000,
-  headless: false, // false = thấy browser (dễ debug); true = chạy ẩn
+  headless: true, // false = thấy browser (dễ debug); true = chạy ẩn
   slowMo: 60, // ms delay giữa các action Playwright
   run_mode: "parallel", // 'parallel' | 'sequential'
   logs_dir: path.resolve(__dirname, "logs/runs"),
