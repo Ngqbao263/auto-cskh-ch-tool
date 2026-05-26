@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 
 <head>
@@ -298,17 +298,18 @@
         }
 
         .form-grid.cols-2 {
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
         .form-grid.cols-3 {
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
         .field-group {
             display: flex;
             flex-direction: column;
             gap: 5px;
+            min-width: 0;
         }
 
         .field-group.full {
@@ -343,6 +344,81 @@
             font-weight: 400;
             margin-left: auto;
             opacity: 0.7;
+        }
+
+        /* ─── FILE UPLOAD ────────────────────────────────────────────────── */
+        .file-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 0;
+            width: 100%;
+        }
+
+        input[type="file"] {
+            display: none; /* ẩn input gốc — trigger bằng label */
+        }
+
+        .file-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.45rem 0.85rem;
+            background: var(--navy-800);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 0.78rem;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-2);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s, border-color 0.15s;
+            flex-shrink: 0;
+        }
+
+        .file-btn:hover {
+            background: var(--navy-700);
+            border-color: var(--amber-lt);
+        }
+
+        .file-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-3);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .file-name.has-file {
+            color: var(--success);
+            font-weight: 500;
+        }
+
+        .file-clear {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: var(--text-3);
+            padding: 0 0.2rem;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .file-clear:hover { color: var(--danger); }
+
+        .docs-note {
+            margin-top: 0.75rem;
+            font-size: 0.73rem;
+            color: var(--text-3);
+            background: var(--navy-800);
+            border-radius: var(--radius);
+            padding: 0.5rem 0.75rem;
+            border-left: 3px solid var(--amber-lt);
         }
 
         /* ─── INPUTS ─────────────────────────────────────────────────────── */
@@ -878,8 +954,14 @@
 
         .result-body {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 0;
+        }
+
+        @media (max-width: 800px) {
+            .result-body {
+                grid-template-columns: 1fr 1fr;
+            }
         }
 
         @media (max-width: 600px) {
@@ -1357,7 +1439,7 @@
             <div class="section-header" onclick="toggleSection('sec-owner')">
                 <div class="section-icon icon-owner">👤</div>
                 <div class="section-title">Thông tin chủ tàu</div>
-                <span class="section-count">9 trường</span>
+                <span class="section-count">15 trường</span>
                 <span class="section-chevron">▼</span>
             </div>
             <div class="section-body">
@@ -1388,6 +1470,16 @@
                         </select>
                     </div>
                     <div class="field-group">
+                        <label for="issue_date">Ngày cấp CCCD <label class="hint">tuỳ chọn</label></label>
+                        <input type="text" id="issue_date" placeholder="VD: 01/01/2020" maxlength="10"
+                            oninput="formatBirthdayInput(this)" />
+                    </div>
+                    <div class="field-group">
+                        <label for="issue_place">Nơi cấp CCCD <label class="hint">tuỳ chọn</label></label>
+                        <input type="text" id="issue_place" placeholder="VD: Cục Trưởng CCS QLHC..."
+                            value="Cục Trưởng CCS QLHC Về Trật Tự Xã Hội" />
+                    </div>
+                    <div class="field-group">
                         <label for="vessel_owner_gender">Giới tính <label class="hint">tuỳ chọn</label></label>
                         <input type="text" id="vessel_owner_gender" placeholder="VD: T" value="T" />
                     </div>
@@ -1405,10 +1497,34 @@
                         <input type="text" id="owner_birthday" placeholder="VD: 01/01/1970" maxlength="10"
                             oninput="formatBirthdayInput(this)" />
                     </div>
+                    <input type="hidden" id="owner_address" />
+                    <input type="hidden" id="owner_address_province_code" />
+                    <input type="hidden" id="owner_address_district_code" />
+                    <input type="hidden" id="owner_address_precinct_code" />
+                    <div class="field-group">
+                        <label for="owner_address_province">Tỉnh/TP <span class="req">*</span></label>
+                        <input type="text" id="owner_address_province" placeholder="VD: Hồ Chí Minh" required
+                            data-required="true" oninput="updateOwnerAddressRaw()" />
+                    </div>
+                    <div class="field-group">
+                        <label for="owner_address_district">Quận/Huyện <span class="req">*</span></label>
+                        <input type="text" id="owner_address_district" placeholder="VD: Vũng Tàu" required
+                            data-required="true" oninput="updateOwnerAddressRaw()" />
+                    </div>
+                    <div class="field-group">
+                        <label for="owner_address_precinct">Phường/Xã <span class="req">*</span></label>
+                        <input type="text" id="owner_address_precinct" placeholder="VD: Phường Vũng Tàu" required
+                            data-required="true" oninput="updateOwnerAddressRaw()" />
+                    </div>
+                    <div class="field-group">
+                        <label for="owner_address_group_street">Tổ/Thôn <span class="req">*</span></label>
+                        <input type="text" id="owner_address_group_street" placeholder="VD: Khu phố 1" required
+                            data-required="true" oninput="updateOwnerAddressRaw()" />
+                    </div>
                     <div class="field-group full">
-                        <label for="owner_address">Địa chỉ chủ tàu <span class="req">*</span></label>
-                        <input type="text" id="owner_address" placeholder="VD: 123 Đường Biển, TP Quảng Ngãi" required
-                            data-required="true" />
+                        <label for="owner_address_street">Địa chỉ chủ tàu <span class="req">*</span></label>
+                        <input type="text" id="owner_address_street" placeholder="Tự động từ Tỉnh/Huyện/Xã/Tổ" required
+                            data-required="true" oninput="syncOwnerAddressHidden()" />
                     </div>
                 </div>
             </div>
@@ -1539,6 +1655,97 @@
             </div>
         </div>
 
+        <!-- ── SECTION 6: HỒ SƠ ĐÍNH KÈM ───────────────────────────────────── -->
+        <div class="section-card" id="sec-docs">
+            <div class="section-header" onclick="toggleSection('sec-docs')">
+                <div class="section-icon">📎</div>
+                <div class="section-title">Hồ sơ đính kèm
+                    <span style="font-weight:400; font-size:0.7rem; color:var(--text-3); margin-left:6px;">(chỉ dùng cho BCCS)</span>
+                </div>
+                <span class="section-count">5 file</span>
+                <span class="section-chevron">▼</span>
+            </div>
+            <div class="section-body">
+
+                <!-- Hàng 1: 3 trường -->
+                <div class="form-grid cols-3">
+
+                    <!-- BBNT -->
+                    <div class="field-group">
+                        <label>Biên bản nghiệm thu <span class="hint">PDF / JPG / PNG</span></label>
+                        <div class="file-row">
+                            <label class="file-btn" for="file_bbnt">📂 Chọn file</label>
+                            <input type="file" id="file_bbnt" accept=".pdf,.jpg,.jpeg,.png"
+                                onchange="showFileName(this)">
+                            <span class="file-name" id="file_bbnt_name">Chưa chọn</span>
+                            <button type="button" class="file-clear" title="Xoá" onclick="clearFile('file_bbnt')">✕</button>
+                        </div>
+                    </div>
+
+                    <!-- CMND mặt sau -->
+                    <div class="field-group">
+                        <label>CMND / CCCD mặt sau <span class="hint">PDF / JPG / PNG</span></label>
+                        <div class="file-row">
+                            <label class="file-btn" for="file_cmnd_sau">📂 Chọn file</label>
+                            <input type="file" id="file_cmnd_sau" accept=".pdf,.jpg,.jpeg,.png"
+                                onchange="showFileName(this)">
+                            <span class="file-name" id="file_cmnd_sau_name">Chưa chọn</span>
+                            <button type="button" class="file-clear" title="Xoá" onclick="clearFile('file_cmnd_sau')">✕</button>
+                        </div>
+                    </div>
+
+                    <!-- CMND mặt trước -->
+                    <div class="field-group">
+                        <label>CMND / CCCD mặt trước <span class="hint">PDF / JPG / PNG</span></label>
+                        <div class="file-row">
+                            <label class="file-btn" for="file_cmnd_truoc">📂 Chọn file</label>
+                            <input type="file" id="file_cmnd_truoc" accept=".pdf,.jpg,.jpeg,.png"
+                                onchange="showFileName(this)">
+                            <span class="file-name" id="file_cmnd_truoc_name">Chưa chọn</span>
+                            <button type="button" class="file-clear" title="Xoá" onclick="clearFile('file_cmnd_truoc')">✕</button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Hàng 2: 2 trường — cùng cols-3 để căn cột với hàng 1 -->
+                <div class="form-grid cols-3" style="margin-top: 0.75rem;">
+
+                    <!-- Hợp đồng -->
+                    <div class="field-group">
+                        <label>Hợp đồng <span class="hint">PDF / JPG / PNG</span></label>
+                        <div class="file-row">
+                            <label class="file-btn" for="file_hop_dong">📂 Chọn file</label>
+                            <input type="file" id="file_hop_dong" accept=".pdf,.jpg,.jpeg,.png"
+                                onchange="showFileName(this)">
+                            <span class="file-name" id="file_hop_dong_name">Chưa chọn</span>
+                            <button type="button" class="file-clear" title="Xoá" onclick="clearFile('file_hop_dong')">✕</button>
+                        </div>
+                    </div>
+
+                    <!-- Phụ lục hợp đồng -->
+                    <div class="field-group">
+                        <label>Phụ lục hợp đồng <span class="hint">PDF / JPG / PNG</span></label>
+                        <div class="file-row">
+                            <label class="file-btn" for="file_phu_luc">📂 Chọn file</label>
+                            <input type="file" id="file_phu_luc" accept=".pdf,.jpg,.jpeg,.png"
+                                onchange="showFileName(this)">
+                            <span class="file-name" id="file_phu_luc_name">Chưa chọn</span>
+                            <button type="button" class="file-clear" title="Xoá" onclick="clearFile('file_phu_luc')">✕</button>
+                        </div>
+                    </div>
+
+                    <!-- Ô trống để giữ căn cột -->
+                    <div></div>
+
+                </div>
+                <p class="docs-note">
+                    💡 File được upload tạm lên server khi bấm <strong>Bắt đầu</strong>,
+                    Playwright dùng để đính kèm vào BCCS, sau đó tự xoá. CSKH và Viettel không dùng các file này.
+                </p>
+            </div>
+        </div>
+
         <!-- ── ACTION BAR + RESULT ───────────────────────────────────────────── -->
         <div class="action-bar">
             <div id="progress-bar-wrap">
@@ -1587,6 +1794,15 @@
                         <div class="result-message" id="cauhinh-message"></div>
                         <div class="result-error" id="cauhinh-error" style="display:none"></div>
                         <div class="result-duration" id="cauhinh-duration"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-item-header">
+                            <span class="result-target-name">BCCS (S-Tracking)</span>
+                            <span id="bccs-badge"></span>
+                        </div>
+                        <div class="result-message" id="bccs-message"></div>
+                        <div class="result-error" id="bccs-error" style="display:none"></div>
+                        <div class="result-duration" id="bccs-duration"></div>
                     </div>
                 </div>
                 <div class="result-total">
@@ -1645,6 +1861,321 @@
             const dst = document.getElementById('owner_email');
             if (src && dst) dst.value = src.value ? src.value + '@gmail.com' : '';
         }
+
+        let ownerAddressConvertTimer = null;
+        let ownerAddressConvertSeq = 0;
+        let ownerConvertedAddressCore = '';
+        let ownerAddressLastConvertInput = '';
+        const ownerAddressConvertCache = new Map();
+        const ownerAddressConvertFailedCache = new Set();
+
+        function composeOwnerAddress() {
+            const val = (id) => (document.getElementById(id)?.value || '').trim();
+            if (ownerConvertedAddressCore) {
+                return [
+                    val('owner_address_group_street'),
+                    ownerConvertedAddressCore,
+                ].filter(Boolean).join(', ');
+            }
+
+            return [
+                val('owner_address_group_street'),
+                val('owner_address_precinct'),
+                val('owner_address_district'),
+                val('owner_address_province'),
+            ].filter(Boolean).join(', ');
+        }
+
+        function syncOwnerAddressHidden() {
+            const full = document.getElementById('owner_address_street')?.value || '';
+            const raw = document.getElementById('owner_address');
+            if (raw) raw.value = full.trim();
+            const capToggle = document.getElementById('captain_is_owner');
+            if (capToggle?.checked) syncOwnerToCaptain();
+        }
+
+        function updateOwnerAddressRaw() {
+            const currentConvertInput = ownerAddressConvertInput();
+            if (currentConvertInput !== ownerAddressLastConvertInput) {
+                ownerConvertedAddressCore = '';
+            }
+            const full = document.getElementById('owner_address_street');
+            if (full) full.value = composeOwnerAddress();
+            const raw = document.getElementById('owner_address');
+            if (raw) raw.value = full?.value?.trim() || composeOwnerAddress();
+            const capToggle = document.getElementById('captain_is_owner');
+            if (capToggle?.checked) syncOwnerToCaptain();
+            scheduleOwnerAddressConvert();
+        }
+
+        function ownerAddressConvertInput() {
+            const val = (id) => (document.getElementById(id)?.value || '').trim();
+            const province = val('owner_address_province');
+            const district = val('owner_address_district');
+            const precinct = val('owner_address_precinct');
+            if (!province || !district || !precinct) return '';
+            return [precinct, district, province].join(', ');
+        }
+
+        function scheduleOwnerAddressConvert() {
+            clearTimeout(ownerAddressConvertTimer);
+            const address = ownerAddressConvertInput();
+            if (!address) {
+                ownerConvertedAddressCore = '';
+                return;
+            }
+
+            ownerAddressConvertTimer = setTimeout(async () => {
+                const seq = ++ownerAddressConvertSeq;
+                try {
+                    if (ownerAddressConvertCache.has(address)) {
+                        ownerConvertedAddressCore = ownerAddressConvertCache.get(address);
+                        ownerAddressLastConvertInput = address;
+                        const full = document.getElementById('owner_address_street');
+                        if (full) full.value = composeOwnerAddress();
+                        const raw = document.getElementById('owner_address');
+                        if (raw) raw.value = full?.value?.trim() || '';
+                        return;
+                    }
+                    if (ownerAddressConvertFailedCache.has(address)) {
+                        return;
+                    }
+
+                    const resp = await fetch('/api/address/convert-new', {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({
+                            address,
+                            province: document.getElementById('owner_address_province')?.value || '',
+                            district: document.getElementById('owner_address_district')?.value || '',
+                            ward: document.getElementById('owner_address_precinct')?.value || '',
+                            groupStreet: document.getElementById('owner_address_group_street')?.value || '',
+                        }),
+                    });
+                    const data = await resp.json();
+                    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+                    if (seq !== ownerAddressConvertSeq) return;
+                    if (!data.success || !data.converted) throw new Error(data.error || 'Không có địa chỉ mới');
+
+                    ownerConvertedAddressCore = data.converted;
+                    ownerAddressConvertCache.set(address, data.converted);
+                    ownerAddressLastConvertInput = address;
+                    const full = document.getElementById('owner_address_street');
+                    if (full) full.value = composeOwnerAddress();
+                    const raw = document.getElementById('owner_address');
+                    if (raw) raw.value = full?.value?.trim() || '';
+                    const capToggle = document.getElementById('captain_is_owner');
+                    if (capToggle?.checked) syncOwnerToCaptain();
+                } catch (err) {
+                    if (seq !== ownerAddressConvertSeq) return;
+                    ownerConvertedAddressCore = '';
+                    ownerAddressConvertFailedCache.add(address);
+                    const full = document.getElementById('owner_address_street');
+                    if (full) full.value = composeOwnerAddress();
+                    const raw = document.getElementById('owner_address');
+                    if (raw) raw.value = full?.value?.trim() || '';
+                    console.warn('[address-convert] Giữ địa chỉ cũ:', err.message);
+                }
+            }, 500);
+        }
+
+        function setHiddenValue(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.value = value ?? '';
+        }
+
+        function clearFieldValue(id) {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        }
+
+        function initAddressAutocomplete({ inputId, codeId, endpoint, params, onSelect, onManualInput, showOnFocus = false }) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+
+            const list = document.createElement('ul');
+            list.id = `${inputId}_autocomplete`;
+            list.className = 'autocomplete-list';
+            list.hidden = true;
+            document.body.appendChild(list);
+
+            let debounceTimer = null;
+            let requestSeq = 0;
+
+            function positionList() {
+                const rect = input.getBoundingClientRect();
+                list.style.top = (rect.bottom + 2) + 'px';
+                list.style.left = rect.left + 'px';
+                list.style.width = rect.width + 'px';
+            }
+
+            function closeList() {
+                list.hidden = true;
+                list.innerHTML = '';
+            }
+
+            function renderResults(results) {
+                list.innerHTML = '';
+                positionList();
+
+                if (!results.length) {
+                    list.innerHTML = '<li class="autocomplete-empty">Không tìm thấy địa chỉ</li>';
+                    list.hidden = false;
+                    return;
+                }
+
+                results.slice(0, 80).forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'autocomplete-item';
+                    li.tabIndex = 0;
+                    li.innerHTML = `
+                        <span class="autocomplete-item-name">${item.name ?? ''}</span>
+                        <span class="autocomplete-item-phone">${item.code ?? ''}</span>`;
+
+                    const select = () => {
+                        input.value = item.name ?? '';
+                        setHiddenValue(codeId, item.code);
+                        closeList();
+                        updateOwnerAddressRaw();
+                        onSelect?.(item);
+                    };
+
+                    li.addEventListener('click', select);
+                    li.addEventListener('keydown', e => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); }
+                        if (e.key === 'ArrowDown') { e.preventDefault(); (li.nextElementSibling ?? input).focus(); }
+                        if (e.key === 'ArrowUp') { e.preventDefault(); (li.previousElementSibling ?? input).focus(); }
+                        if (e.key === 'Escape') closeList();
+                    });
+                    list.appendChild(li);
+                });
+                list.hidden = false;
+            }
+
+            function hasRequiredParams() {
+                const extraParams = typeof params === 'function' ? params() : {};
+                return !Object.values(extraParams || {}).some(value =>
+                    value === undefined || value === null || String(value).trim() === ''
+                );
+            }
+
+            function fetchResults(q, { immediate = false } = {}) {
+                clearTimeout(debounceTimer);
+                if (!hasRequiredParams()) { closeList(); return; }
+                if (!immediate && q.length < 2) { closeList(); return; }
+
+                const run = async () => {
+                    const seq = ++requestSeq;
+                    try {
+                        const query = new URLSearchParams();
+                        if (q) query.set('q', q);
+                        const extraParams = typeof params === 'function' ? params() : {};
+                        Object.entries(extraParams || {}).forEach(([key, value]) => {
+                            if (value !== undefined && value !== null && String(value).trim() !== '') {
+                                query.set(key, String(value).trim());
+                            }
+                        });
+
+                        const resp = await fetch(`${endpoint}?${query.toString()}`);
+                        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                        const { results } = await resp.json();
+                        if (seq === requestSeq) renderResults(results ?? []);
+                    } catch (err) {
+                        console.warn(`[address-autocomplete] ${inputId}:`, err.message);
+                        closeList();
+                    }
+                };
+
+                if (immediate) run();
+                else debounceTimer = setTimeout(run, 250);
+            }
+
+            input.addEventListener('input', () => {
+                setHiddenValue(codeId, '');
+                onManualInput?.();
+                updateOwnerAddressRaw();
+                fetchResults(input.value.trim());
+            });
+
+            input.addEventListener('focus', () => {
+                if (showOnFocus) fetchResults('', { immediate: true });
+            });
+
+            input.addEventListener('click', () => {
+                if (showOnFocus) fetchResults('', { immediate: true });
+            });
+
+            input.addEventListener('keydown', e => {
+                if (e.key === 'ArrowDown' && !list.hidden) {
+                    e.preventDefault();
+                    list.querySelector('.autocomplete-item')?.focus();
+                }
+                if (e.key === 'Escape') closeList();
+            });
+
+            document.addEventListener('click', e => {
+                if (!input.contains(e.target) && !list.contains(e.target)) closeList();
+            });
+            window.addEventListener('scroll', () => { if (!list.hidden) positionList(); }, true);
+            window.addEventListener('resize', () => { if (!list.hidden) positionList(); });
+        }
+
+        (function initOwnerAddressAutocomplete() {
+            initAddressAutocomplete({
+                inputId: 'owner_address_province',
+                codeId: 'owner_address_province_code',
+                endpoint: '/api/address/provinces',
+                onSelect: () => {
+                    clearFieldValue('owner_address_district');
+                    clearFieldValue('owner_address_precinct');
+                    setHiddenValue('owner_address_district_code', '');
+                    setHiddenValue('owner_address_precinct_code', '');
+                    updateOwnerAddressRaw();
+                    document.getElementById('owner_address_district')?.focus();
+                },
+                onManualInput: () => {
+                    clearFieldValue('owner_address_district');
+                    clearFieldValue('owner_address_precinct');
+                    setHiddenValue('owner_address_district_code', '');
+                    setHiddenValue('owner_address_precinct_code', '');
+                },
+            });
+
+            initAddressAutocomplete({
+                inputId: 'owner_address_district',
+                codeId: 'owner_address_district_code',
+                endpoint: '/api/address/districts',
+                params: () => ({
+                    provinceCode: document.getElementById('owner_address_province_code')?.value || '',
+                }),
+                showOnFocus: true,
+                onSelect: () => {
+                    clearFieldValue('owner_address_precinct');
+                    setHiddenValue('owner_address_precinct_code', '');
+                    updateOwnerAddressRaw();
+                    document.getElementById('owner_address_precinct')?.focus();
+                },
+                onManualInput: () => {
+                    clearFieldValue('owner_address_precinct');
+                    setHiddenValue('owner_address_precinct_code', '');
+                },
+            });
+
+            initAddressAutocomplete({
+                inputId: 'owner_address_precinct',
+                codeId: 'owner_address_precinct_code',
+                endpoint: '/api/address/wards',
+                params: () => ({
+                    districtCode: document.getElementById('owner_address_district_code')?.value || '',
+                    provinceCode: document.getElementById('owner_address_province_code')?.value || '',
+                }),
+                showOnFocus: true,
+                onSelect: () => {
+                    updateOwnerAddressRaw();
+                    document.getElementById('owner_address_group_street')?.focus();
+                },
+            });
+        })();
 
         // ── Auto-select Loại mã số dựa trên độ dài CCCD ─────────────────────────────
         // 9 ký tự số → CMND (value "1"), 12 ký tự số → CCCD (value "2"), khác → giữ nguyên
@@ -1759,6 +2290,7 @@
 
         // ── Collect masterData from form ─────────────────────────────────────────────
         function collectMasterData() {
+            updateOwnerAddressRaw();
             const g = (id) => {
                 const el = document.getElementById(id);
                 if (!el) return null;
@@ -1800,7 +2332,17 @@
                 owner_name: g('owner_name'),
                 owner_phone: g('owner_phone'),
                 owner_cccd: g('owner_cccd'),
+                issue_date: g('issue_date'),
+                issue_place: g('issue_place'),
                 owner_address: g('owner_address'),
+                owner_address_province: g('owner_address_province'),
+                owner_address_province_code: g('owner_address_province_code'),
+                owner_address_district: g('owner_address_district'),
+                owner_address_district_code: g('owner_address_district_code'),
+                owner_address_precinct: g('owner_address_precinct'),
+                owner_address_precinct_code: g('owner_address_precinct_code'),
+                owner_address_group_street: g('owner_address_group_street'),
+                owner_address_street: g('owner_address_street'),
                 owner_loai_ma_so: g('owner_loai_ma_so'),
                 vessel_owner_gender: g('vessel_owner_gender'),
                 owner_birthday: g('owner_birthday'),
@@ -1847,6 +2389,11 @@
                 owner_fax: 'Số Fax chủ tàu',
                 owner_email: 'Email chủ tàu',
                 owner_address: 'Địa chỉ chủ tàu',
+                owner_address_province: 'Tỉnh/TP chủ tàu',
+                owner_address_district: 'Quận/Huyện chủ tàu',
+                owner_address_precinct: 'Phường/Xã chủ tàu',
+                owner_address_group_street: 'Tổ/Thôn chủ tàu',
+                owner_address_street: 'Địa chỉ chủ tàu',
                 // Kỹ thuật & thanh toán
                 so_thang: 'Số tháng',
                 tong_tai_trong: 'Tổng tải trọng',
@@ -1933,38 +2480,36 @@
             const panel = document.getElementById('result-panel');
             const header = document.getElementById('result-header');
 
-            const cskhOk = data.results?.cskh?.success;
+            const cskhOk    = data.results?.cskh?.success;
             const cauhinhOk = data.results?.cauhinh?.success;
-            const allOk = cskhOk && cauhinhOk;
+            const bccsOk    = data.results?.bccs?.success;
+            // overallSuccess chỉ tính CSKH + Viettel (BCCS lỗi không kéo overall xuống)
+            const allOk  = cskhOk && cauhinhOk;
             const noneOk = !cskhOk && !cauhinhOk;
 
             // Header
             header.className = 'result-header ' + (allOk ? 'success' : noneOk ? 'error' : 'partial');
             document.getElementById('result-header-icon').textContent = allOk ? '✅' : noneOk ? '❌' : '⚠️';
             document.getElementById('result-header-text').textContent =
-                allOk ? 'Cả 2 hệ thống đã được điền thành công!' :
-                    noneOk ? 'Cả 2 hệ thống đều thất bại. Kiểm tra log để biết thêm.' :
-                        'Một hệ thống thành công, một thất bại — kiểm tra chi tiết bên dưới.';
+                allOk  ? 'CSKH và Viettel hoàn tất thành công!' :
+                noneOk ? 'CSKH và Viettel đều thất bại — kiểm tra log.' :
+                         'Một hệ thống thành công, một thất bại — kiểm tra chi tiết.';
 
-            // CSKH result
-            const cskh = data.results?.cskh ?? {};
-            document.getElementById('cskh-badge').textContent = cskh.success ? '✅' : '❌';
-            document.getElementById('cskh-badge').className = 'result-badge-' + (cskh.success ? 'ok' : 'err');
-            document.getElementById('cskh-message').textContent = cskh.message || '';
-            document.getElementById('cskh-duration').textContent = cskh.duration_ms ? `⏱ ${(cskh.duration_ms / 1000).toFixed(1)}s` : '';
-            const cskhErr = document.getElementById('cskh-error');
-            if (!cskh.success && cskh.error) { cskhErr.textContent = cskh.error; cskhErr.style.display = 'block'; }
-            else { cskhErr.style.display = 'none'; }
+            // Helper: điền 1 result-item
+            function fillResultItem(prefix, obj) {
+                document.getElementById(prefix + '-badge').textContent  = obj.success ? '✅' : '❌';
+                document.getElementById(prefix + '-badge').className     = 'result-badge-' + (obj.success ? 'ok' : 'err');
+                document.getElementById(prefix + '-message').textContent = obj.message || '';
+                document.getElementById(prefix + '-duration').textContent = obj.duration_ms
+                    ? `⏱ ${(obj.duration_ms / 1000).toFixed(1)}s` : '';
+                const errEl = document.getElementById(prefix + '-error');
+                if (!obj.success && obj.error) { errEl.textContent = obj.error; errEl.style.display = 'block'; }
+                else { errEl.style.display = 'none'; }
+            }
 
-            // Cauhinh result
-            const cauhinh = data.results?.cauhinh ?? {};
-            document.getElementById('cauhinh-badge').textContent = cauhinh.success ? '✅' : '❌';
-            document.getElementById('cauhinh-badge').className = 'result-badge-' + (cauhinh.success ? 'ok' : 'err');
-            document.getElementById('cauhinh-message').textContent = cauhinh.message || '';
-            document.getElementById('cauhinh-duration').textContent = cauhinh.duration_ms ? `⏱ ${(cauhinh.duration_ms / 1000).toFixed(1)}s` : '';
-            const cauhinhErr = document.getElementById('cauhinh-error');
-            if (!cauhinh.success && cauhinh.error) { cauhinhErr.textContent = cauhinh.error; cauhinhErr.style.display = 'block'; }
-            else { cauhinhErr.style.display = 'none'; }
+            fillResultItem('cskh',    data.results?.cskh    ?? {});
+            fillResultItem('cauhinh', data.results?.cauhinh ?? {});
+            fillResultItem('bccs',    data.results?.bccs    ?? { success: false, message: 'Không nhận được kết quả BCCS.' });
 
             // Footer
             const totalSec = data.total_duration_ms ? (data.total_duration_ms / 1000).toFixed(1) : '?';
@@ -1982,6 +2527,27 @@
             bannerList.innerHTML = message.replace(/\n/g, '<br>');
             banner.style.display = 'block';
             banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // ── File upload helpers ───────────────────────────────────────────────────────
+        function showFileName(input) {
+            const nameEl = document.getElementById(input.id + '_name');
+            if (!nameEl) return;
+            const file = input.files[0];
+            if (file) {
+                nameEl.textContent = file.name;
+                nameEl.title = file.name;
+                nameEl.classList.add('has-file');
+            } else {
+                nameEl.textContent = 'Chưa chọn';
+                nameEl.title = '';
+                nameEl.classList.remove('has-file');
+            }
+        }
+
+        function clearFile(inputId) {
+            const input = document.getElementById(inputId);
+            if (input) { input.value = ''; showFileName(input); }
         }
 
         // ── MAIN: Run Automation ─────────────────────────────────────────────────────
@@ -2016,11 +2582,21 @@
             const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
             try {
-                console.log('[runAutomation] Chuẩn bị gửi fetch...', { masterData });
+                // Dùng FormData để hỗ trợ file upload
+                const formData = new FormData();
+                formData.append('masterData', JSON.stringify(masterData));
+
+                // Gắn từng file nếu nhân viên đã chọn
+                ['file_bbnt', 'file_cmnd_sau', 'file_cmnd_truoc', 'file_hop_dong', 'file_phu_luc'].forEach(id => {
+                    const input = document.getElementById(id);
+                    if (input?.files[0]) formData.append(id, input.files[0]);
+                });
+
+                console.log('[runAutomation] Chuẩn bị gửi fetch (FormData)...', { masterData });
                 const resp = await fetch('/api/run-automation', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ masterData }),
+                    // KHÔNG set Content-Type — browser tự thêm boundary cho multipart
+                    body: formData,
                     signal: controller.signal,
                 });
 
@@ -2886,3 +3462,4 @@
 </body>
 
 </html>
+

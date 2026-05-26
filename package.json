@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run test:bccs-address",
+    "test:bccs-address": "node scripts/test-bccs-address-popup.js",
+    "build:address-convert": "python scripts/build-address-convert-db.py"
   },
   "keywords": [],
   "author": "",
@@ -14,6 +16,7 @@
     "dayjs": "^1.11.20",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "multer": "^2.1.1",
     "playwright": "^1.60.0"
   },
   "devDependencies": {

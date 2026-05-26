@@ -10,7 +10,16 @@
       "Bash(node -e \"require\\('./automation/cskh-db-handler.js'\\); console.log\\('✅ Syntax OK'\\)\")",
       "Bash(node -e \"require\\('./automation/engine.js'\\); console.log\\('✅ Syntax OK'\\)\")",
       "Bash(python -c ' *)",
-      "Bash(pip install *)"
+      "Bash(pip install *)",
+      "Bash(python -c \"import sys; sys.stdout.buffer.write\\(sys.stdin.buffer.read\\(\\)\\)\")",
+      "Bash(node -e \"require\\('multer'\\); console.log\\('ok'\\)\")",
+      "Bash(npm install *)",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"require\\('./automation/bccs-handler.js'\\); console.log\\('OK'\\)\")",
+      "Bash(node -e \"require\\('./automation/bccs-handler.js'\\); console.log\\('bccs OK'\\)\")",
+      "Bash(node -e \"require\\('./server.js'\\)\")",
+      "Bash(node --check automation/bccs-handler.js)",
+      "Bash(node --check server.js)"
     ]
   }
 }

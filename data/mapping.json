@@ -4,7 +4,7 @@
     "description": "Mapping config cho hệ thống Auto Data Entry: CSKH (SDVICO) & Cấu hình (Viettel)",
     "last_updated": "2026-05-12",
     "author": "Auto-generated từ Master Form survey",
-    "targets": ["cskh", "cauhinh"],
+    "targets": ["cskh", "cauhinh", "bccs"],
     "notes": [
       "Cấu hình Viettel gồm 5 form con (form1..form5) phải điền tuần tự.",
       "CSKH là 1 form duy nhất.",
@@ -466,6 +466,199 @@
           "wait_for_enabled": true,
           "notes": "Chỉ điền khi loai_khuyen_mai != none. Phải waitFor({ state: 'enabled' }) vì ô này bị disabled khi KM = none."
         }
+      }
+    },
+
+    "bccs": {
+      "_comment": "BCCS — Hệ thống Chăm sóc Khách hàng Viettel (PrimeFaces JSF). Selectors dùng [id=\"...\"] vì JSF ID chứa ':' — KHÔNG dùng #id.",
+      "_selector_rule": "Đúng: [id=\"connectForm:j_idt108:...\"] | Sai: #connectForm:j_idt108:...",
+      "form_structure": "single_page",
+
+      "credentials": {
+        "_note": "Đặt URL + tài khoản vào .env. Handler đọc qua process.env.",
+        "login_url_env":  "BCCS_LOGIN_URL",
+        "entry_url_env":  "BCCS_ENTRY_URL",
+        "username_env":   "BCCS_USERNAME",
+        "password_env":   "BCCS_PASSWORD",
+        "default_entry":  "http://10.240.147.109:8400/SALE_WEB/stracking.jsf"
+      },
+
+      "navigation": {
+        "_name": "Điều hướng menu (fallback nếu BCCS_ENTRY_URL không hoạt động)",
+        "menu_gpcntt":   "[id=\"form_menu:menu_1\"] > a",
+        "menu_ccpdv":    "[id=\"form_menu:menu_1_2\"] > a",
+        "menu_stracking":"[id=\"form_menu:menu_1_2_1\"] a"
+      },
+
+      "customer_section": {
+        "_name": "Thông tin khách hàng",
+
+        "id_type": {
+          "master_field": "owner_cccd",
+          "label_vi": "Loại giấy tờ",
+          "selector": "[id=\"connectForm:j_idt108:mainCustomercbxIdType_input\"]",
+          "element": "select",
+          "logic": "CCCD.length === 9 → label 'Chứng minh nhân dân'; length === 12 → label 'Thẻ căn cước'."
+        },
+        "owner_cccd": {
+          "master_field": "owner_cccd",
+          "label_vi": "Số CMT/CCCD",
+          "selector": "[id=\"connectForm:j_idt108:mainCustomertxtIdNoCust_input\"]",
+          "element": "input[text]",
+          "notes": "maxlength=12. Nhấn Tab sau fill để trigger AJAX lookup tự điền Tên."
+        },
+        "issue_place": {
+          "master_field": null,
+          "label_vi": "Nơi cấp",
+          "selector": "[id=\"connectForm:j_idt108:mainCustomertxtPlaceIss\"]",
+          "element": "input[text]",
+          "static_value": "Cục Trưởng CCS QLHC Về Trật Tự Xã Hội",
+          "notes": "maxlength=50. Điền cố định."
+        },
+        "owner_name": {
+          "master_field": "owner_name",
+          "label_vi": "Tên khách hàng",
+          "selector": "[id=\"connectForm:j_idt108:mainCustomertxtHoten\"]",
+          "element": "input[text]",
+          "notes": "maxlength=120. Có thể tự điền sau AJAX CCCD lookup."
+        },
+        "owner_birthday": {
+          "master_field": "owner_birthday",
+          "label_vi": "Ngày sinh",
+          "selector": "[id=\"connectForm:j_idt108:mainCustomercldDOB_input\"]",
+          "element": "input[text] jQuery Datepicker",
+          "notes": "Format DD/MM/YYYY. Type từng ký tự số — datepicker tự thêm '/'."
+        },
+        "gender_nam": {
+          "master_field": "vessel_owner_gender",
+          "label_vi": "Giới tính Nam",
+          "selector": "[id=\"connectForm:j_idt108:mainCustomersorGender:0\"]",
+          "element": "input[radio]",
+          "condition": "vessel_owner_gender === 'T'"
+        },
+        "gender_nu": {
+          "master_field": "vessel_owner_gender",
+          "label_vi": "Giới tính Nữ",
+          "selector": "[id=\"connectForm:j_idt108:mainCustomersorGender:1\"]",
+          "element": "input[radio]",
+          "condition": "vessel_owner_gender === 'G'"
+        },
+        "address": {
+          "_status": "PENDING — sẽ xử lý sau",
+          "trigger": "[id=\"connectForm:j_idt108:j_idt313:testLinkmainCustomertxtAdd\"]",
+          "province": "[id=\"connectForm:j_idt108:j_idt313:mainCustomertxtAddprovince_input\"]",
+          "district": "[id=\"connectForm:j_idt108:j_idt313:mainCustomertxtAdddistrict_input\"]",
+          "ward":     "[id=\"connectForm:j_idt108:j_idt313:mainCustomertxtAddprecinct_input\"]",
+          "group":    "[id=\"connectForm:j_idt108:j_idt313:mainCustomertxtAddgroupStreet_input\"]",
+          "street":   "[id=\"connectForm:j_idt108:j_idt313:mainCustomertxtAddstreetPro\"]",
+          "confirm":  "[id=\"connectForm:j_idt108:j_idt313:j_idt393\"]"
+        }
+      },
+
+      "package_section": {
+        "_name": "Thông tin sản phẩm",
+
+        "package_id": {
+          "master_field": null,
+          "label_vi": "Gói cước",
+          "selector": "[id=\"connectForm:packageId-_input\"]",
+          "element": "input PrimeFaces autocomplete",
+          "static_value": "STRMF385",
+          "notes": "click → type → click option đầu tiên → chờ AJAX render radio."
+        },
+        "duration_radio": {
+          "master_field": "so_thang",
+          "label_vi": "Chu kỳ đóng cước",
+          "options": {
+            "12": "[id=\"connectForm:customRadio0:0_clone\"]",
+            "6":  "[id=\"connectForm:customRadio0:1_clone\"]",
+            "3":  "[id=\"connectForm:customRadio0:2_clone\"]"
+          },
+          "notes": "Dùng _clone suffix (visible). so_thang ≥10→12, ≥5→6, ≥1→3."
+        }
+      },
+
+      "subscriber_section": {
+        "_name": "Thông tin thuê bao",
+
+        "sub_type": {
+          "master_field": null,
+          "label_vi": "Mã mặt hàng",
+          "selector": "[id=\"connectForm:cbxSubType_input\"]",
+          "element": "select PrimeFaces",
+          "static_value": "S-Tracking",
+          "notes": "Chọn xong → chờ AJAX render ô serial."
+        },
+        "serial": {
+          "master_field": "serial_number",
+          "label_vi": "Serial thiết bị",
+          "selector": "[id=\"connectForm:sealingCode\"] input",
+          "element": "input[text] (render động)",
+          "notes": "Render sau khi chọn Mã mặt hàng."
+        },
+        "reload_isdn": {
+          "master_field": null,
+          "label_vi": "Sinh Account (⟳)",
+          "selector": "[id=\"connectForm:j_idt1809\"]",
+          "element": "a (AJAX)",
+          "notes": "Click để AJAX sinh ISDN/Account tự động."
+        },
+        "bien_so_tau": {
+          "master_field": "bien_so_tau",
+          "label_vi": "Biển số tàu",
+          "selector": "[id=\"connectForm:isdnAccountplate\"]",
+          "element": "input[text]"
+        },
+        "install_address": {
+          "_status": "PENDING — sẽ xử lý sau",
+          "trigger": "[id=\"connectForm:j_idt1724:testLinktxtDeploymentAddressSip\"]",
+          "province": "[id=\"connectForm:j_idt1724:txtDeploymentAddressSipprovince_input\"]",
+          "district": "[id=\"connectForm:j_idt1724:txtDeploymentAddressSipdistrict_input\"]",
+          "ward":     "[id=\"connectForm:j_idt1724:txtDeploymentAddressSipprecinct_input\"]",
+          "confirm":  "[id=\"connectForm:j_idt1724:j_idt1870\"]"
+        }
+      },
+
+      "payment_section": {
+        "_name": "Thông tin thanh toán",
+
+        "bill_cycle": {
+          "master_field": null,
+          "label_vi": "Chu kỳ cước",
+          "selector": "[id=\"connectForm:j_idt1904:svAccountInfo:cbxViewBillCycle_input\"]",
+          "static_value": "1"
+        },
+        "payment_method": {
+          "master_field": null,
+          "label_vi": "Hình thức thanh toán",
+          "selector": "[id=\"connectForm:j_idt1904:svAccountInfo:cbxViewPayMethod_input\"]",
+          "static_value": "01"
+        },
+        "notice_charge": {
+          "master_field": null,
+          "label_vi": "Hình thức TBC",
+          "selector": "[id=\"connectForm:j_idt1904:svAccountInfo:cbxViewNoticeCharge_input\"]",
+          "static_value": "2"
+        },
+        "phone": {
+          "master_field": "owner_phone",
+          "label_vi": "Điện thoại",
+          "selector": "[id=\"connectForm:j_idt1904:svAccountInfo:txtTelPhone\"]",
+          "element": "input[text]",
+          "notes": "maxlength=11."
+        }
+      },
+
+      "submit_section": {
+        "_name": "Captcha + Submit",
+
+        "captcha_img":    "[id=\"connectForm:capcha:captchaImg\"]",
+        "captcha_reload": "[id=\"connectForm:capcha:j_idt5320\"]",
+        "captcha_input":  "[id=\"connectForm:capcha:capcha1\"]",
+        "btn_dau_noi":    "[id=\"connectForm:buttonDoConnectId:j_idt5328\"]",
+        "btn_dong_y":     "[id=\"connectForm:buttonDoConnectId:j_idt5363\"]",
+        "dlg_success":    "[id=\"connectForm:dlgConnectInfor\"]",
+        "notes": "Captcha: dừng page.pause() để nhập tay. Submit 2 bước: Đấu nối → Đồng ý."
       }
     },
 
