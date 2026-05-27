@@ -158,6 +158,15 @@ function validateMasterData(data) {
 function formatSettledResult(settledResult, label) {
   if (settledResult.status === "fulfilled") {
     const val = settledResult.value ?? {};
+    if (val.success === false) {
+      return {
+        success: false,
+        duration_ms: val.duration_ms ?? null,
+        test_mode: val.test_mode ?? false,
+        error: val.error || "Lỗi không xác định.",
+        message: val.message || `${label} thất bại.`,
+      };
+    }
     const isTest = val.test_mode ?? false;
     // Hiển thị connection_id + payment_id nếu có (từ RPC create_connection_record)
     const extra = val.inserted_id
@@ -336,6 +345,9 @@ app.post("/api/run-automation", upload.fields(UPLOAD_FIELDS), async (req, res) =
 
   const missingFields = validateMasterData(masterData);
   if (missingFields.length > 0) {
+    _uploadedPaths.forEach((p) => {
+      try { fs.unlinkSync(p); } catch { /* bỏ qua */ }
+    });
     return res.status(400).json({
       success: false,
       error: `Thiếu các trường bắt buộc: ${missingFields.join(", ")}`,
@@ -356,6 +368,24 @@ app.post("/api/run-automation", upload.fields(UPLOAD_FIELDS), async (req, res) =
   const testModeCskh    = CONFIG.test_mode.cskh;
   const testModeCauhinh = CONFIG.test_mode.cauhinh;
   const testModeBccs    = CONFIG.test_mode.bccs;
+  const automationOptions = masterData.automation_options || {};
+  const runMainFlow = automationOptions.run_main_flow !== false;
+  const runBccs = automationOptions.run_bccs !== false;
+
+  if (!runMainFlow && !runBccs) {
+    _uploadedPaths.forEach((p) => {
+      try { fs.unlinkSync(p); } catch { /* bỏ qua */ }
+    });
+    return res.status(400).json({
+      success: false,
+      error: "Vui lòng bật ít nhất một luồng cần chạy.",
+      results: {
+        cskh: formatSkippedResult("CSKH"),
+        cauhinh: formatSkippedResult("Cấu hình Viettel"),
+        bccs: formatSkippedResult("BCCS"),
+      },
+    });
+  }
 
   // ── Log trạng thái test mode ──────────────────────────────────────────────
   console.log(
@@ -379,90 +409,105 @@ app.post("/api/run-automation", upload.fields(UPLOAD_FIELDS), async (req, res) =
         : "🟢 THẬT (lưu vào BCCS)"
     }`
   );
+  console.log(
+    `   Luồng bật: ${[
+      runMainFlow ? "CSKH + Viettel" : "",
+      runBccs ? "BCCS" : "",
+    ].filter(Boolean).join(", ")}`
+  );
   console.log("═".repeat(60));
 
-  // ── Khởi tạo browser (chỉ dùng cho Viettel — CSKH dùng DB trực tiếp) ─────
-  // Browser luôn hiện khi Viettel đang ở test mode để quan sát
-  const effectiveHeadless = testModeCauhinh ? false : CONFIG.headless;
-
   let browser;
-  try {
-    browser = await chromium.launch({
-      headless: effectiveHeadless,
-      slowMo: CONFIG.slowMo,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-    console.log(
-      `\n🌐 Browser khởi động (headless=${effectiveHeadless}) — dùng cho Viettel`
-    );
-  } catch (err) {
-    console.error("❌ Không thể khởi động Playwright:", err.message);
-    return res.status(500).json({
-      success: false,
-      error: `Không thể khởi động browser: ${err.message}`,
-    });
-  }
-
-  let results;
+  let results = {
+    cskh: runMainFlow ? null : formatSkippedResult("CSKH"),
+    cauhinh: runMainFlow ? null : formatSkippedResult("Cấu hình Viettel"),
+    bccs: runBccs ? null : formatSkippedResult("BCCS"),
+  };
 
   try {
-    const context = await browser.newContext({
-      viewport: { width: 1440, height: 900 },
-      locale: "vi-VN",
-      timezoneId: "Asia/Ho_Chi_Minh",
-      ignoreHTTPSErrors: true, // bỏ qua lỗi SSL cert nội bộ (self-signed / CA nội bộ)
-    });
-    // 30s per action — đủ cho Viettel xử lý mỗi bước mà không treo quá lâu khi lỗi.
-    // (CONFIG.request_timeout = 3 phút quá lớn → bot đứng 3 phút mỗi khi bị kẹt)
-    context.setDefaultTimeout(30_000);
+    let pageCauhinh = null;
+    let cauhinhInitError = null;
 
-    // CSKH: DB insert — không cần tab riêng
-    // Viettel: 1 tab trong context này
-    // BCCS: tự launch browser riêng bên trong bccs-handler (SFive / executablePath)
-    const pageCauhinh = await context.newPage();
-    console.log(
-      `\n📑 Đã tạo tab Playwright cho Viettel. CSKH → Supabase. BCCS → browser riêng.`
-    );
+    if (runMainFlow) {
+      const effectiveHeadless = testModeCauhinh ? false : CONFIG.headless;
+      try {
+        browser = await chromium.launch({
+          headless: effectiveHeadless,
+          slowMo: CONFIG.slowMo,
+          args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        });
+        console.log(
+          `\n🌐 Browser khởi động (headless=${effectiveHeadless}) — dùng cho Viettel`
+        );
+
+        const context = await browser.newContext({
+          viewport: { width: 1440, height: 900 },
+          locale: "vi-VN",
+          timezoneId: "Asia/Ho_Chi_Minh",
+          ignoreHTTPSErrors: true,
+        });
+        context.setDefaultTimeout(30_000);
+        pageCauhinh = await context.newPage();
+        console.log(`\n📑 Đã tạo tab Playwright cho Viettel.`);
+      } catch (err) {
+        cauhinhInitError = err;
+        results.cauhinh = {
+          success: false,
+          error: `Không thể khởi động browser Viettel: ${err.message}`,
+          message: "Cấu hình thất bại.",
+        };
+        console.error("❌ Không thể khởi động Playwright cho Viettel:", err.message);
+      }
+    } else {
+      console.log(`\n⏭️  Bỏ qua CSKH + Viettel theo lựa chọn người dùng.`);
+    }
 
     if (CONFIG.run_mode === "parallel") {
-      console.log(
-        `\n⚡ Chế độ SONG SONG: CSKH (DB) + Cấu hình (Playwright) + BCCS (Playwright) chạy đồng thời\n`
-      );
-      const [cskhResult, cauhinhResult, bccsResult] = await Promise.allSettled([
-        insertCSKH(masterData, testModeCskh),
-        runCauhinh(pageCauhinh, masterData, testModeCauhinh),
-        runBCCS(masterData, testModeBccs),          // BCCS tự quản lý browser riêng
-      ]);
-      results = {
-        cskh:    formatSettledResult(cskhResult,    "CSKH"),
-        cauhinh: formatSettledResult(cauhinhResult, "Cấu hình"),
-        bccs:    formatSettledResult(bccsResult,    "BCCS"),
-      };
+      const tasks = [];
+      if (runMainFlow) {
+        tasks.push({ key: "cskh", label: "CSKH", fn: () => insertCSKH(masterData, testModeCskh) });
+        if (!cauhinhInitError && pageCauhinh) {
+          tasks.push({ key: "cauhinh", label: "Cấu hình", fn: () => runCauhinh(pageCauhinh, masterData, testModeCauhinh) });
+        }
+      }
+      if (runBccs) {
+        tasks.push({ key: "bccs", label: "BCCS", fn: () => runBCCS(masterData, testModeBccs) });
+      }
+
+      console.log(`\n⚡ Chế độ SONG SONG: chạy ${tasks.map((t) => t.label).join(" + ")}\n`);
+      const settled = await Promise.allSettled(tasks.map((task) => task.fn()));
+      settled.forEach((settledResult, index) => {
+        const task = tasks[index];
+        results[task.key] = formatSettledResult(settledResult, task.label);
+      });
     } else {
-      console.log(
-        `\n🔁 Chế độ TUẦN TỰ: CSKH (DB) → Cấu hình (Playwright) → BCCS (Playwright)\n`
-      );
-      const [cskhSettled] = await Promise.allSettled([
-        insertCSKH(masterData, testModeCskh),
-      ]);
-      const [cauhinhSettled] = await Promise.allSettled([
-        runCauhinh(pageCauhinh, masterData, testModeCauhinh),
-      ]);
-      const [bccsSettled] = await Promise.allSettled([
-        runBCCS(masterData, testModeBccs),          // BCCS tự quản lý browser riêng
-      ]);
-      results = {
-        cskh:    formatSettledResult(cskhSettled,    "CSKH"),
-        cauhinh: formatSettledResult(cauhinhSettled, "Cấu hình"),
-        bccs:    formatSettledResult(bccsSettled,    "BCCS"),
-      };
+      console.log(`\n🔁 Chế độ TUẦN TỰ theo các luồng đã bật\n`);
+      if (runMainFlow) {
+        const [cskhSettled] = await Promise.allSettled([
+          insertCSKH(masterData, testModeCskh),
+        ]);
+        results.cskh = formatSettledResult(cskhSettled, "CSKH");
+
+        if (!cauhinhInitError && pageCauhinh) {
+          const [cauhinhSettled] = await Promise.allSettled([
+            runCauhinh(pageCauhinh, masterData, testModeCauhinh),
+          ]);
+          results.cauhinh = formatSettledResult(cauhinhSettled, "Cấu hình");
+        }
+      }
+      if (runBccs) {
+        const [bccsSettled] = await Promise.allSettled([
+          runBCCS(masterData, testModeBccs),
+        ]);
+        results.bccs = formatSettledResult(bccsSettled, "BCCS");
+      }
     }
   } catch (err) {
     console.error("❌ Lỗi không mong muốn:", err.message);
     results = {
-      cskh:    { success: false, error: "Lỗi hệ thống: " + err.message },
-      cauhinh: { success: false, error: "Lỗi hệ thống: " + err.message },
-      bccs:    { success: false, error: "Lỗi hệ thống: " + err.message },
+      cskh:    runMainFlow ? { success: false, error: "Lỗi hệ thống: " + err.message, message: "CSKH thất bại." } : formatSkippedResult("CSKH"),
+      cauhinh: runMainFlow ? { success: false, error: "Lỗi hệ thống: " + err.message, message: "Cấu hình thất bại." } : formatSkippedResult("Cấu hình Viettel"),
+      bccs:    runBccs ? { success: false, error: "Lỗi hệ thống: " + err.message, message: "BCCS thất bại." } : formatSkippedResult("BCCS"),
     };
   } finally {
     if (browser) {
@@ -479,8 +524,9 @@ app.post("/api/run-automation", upload.fields(UPLOAD_FIELDS), async (req, res) =
   }
 
   const totalDuration = Date.now() - startTime;
-  // overallSuccess: chỉ tính CSKH + Viettel — BCCS lỗi không kéo overall xuống
-  const overallSuccess = results.cskh.success && results.cauhinh.success;
+  const activeResults = Object.values(results).filter((item) => item && !item.skipped);
+  const overallSuccess = activeResults.length > 0 && activeResults.every((item) => item.success);
+  const partialSuccess = activeResults.some((item) => item.success) && activeResults.some((item) => !item.success);
   const logFile = saveRunLog(masterData, results, totalDuration);
 
   console.log("\n" + "═".repeat(60));
@@ -497,20 +543,22 @@ app.post("/api/run-automation", upload.fields(UPLOAD_FIELDS), async (req, res) =
     ).toFixed(1)}s${testSuffix ? `  [TEST: ${testSuffix}]` : ""}`
   );
   console.log(
-    `   CSKH:     ${results.cskh.success    ? "✅ OK" : "❌ " + results.cskh.error}`
+    `   CSKH:     ${results.cskh.skipped ? "⏭️ SKIP" : results.cskh.success ? "✅ OK" : "❌ " + results.cskh.error}`
   );
   console.log(
-    `   Cấu hình: ${results.cauhinh.success ? "✅ OK" : "❌ " + results.cauhinh.error}`
+    `   Cấu hình: ${results.cauhinh.skipped ? "⏭️ SKIP" : results.cauhinh.success ? "✅ OK" : "❌ " + results.cauhinh.error}`
   );
   console.log(
-    `   BCCS:     ${results.bccs.success    ? "✅ OK" : "❌ " + results.bccs.error}`
+    `   BCCS:     ${results.bccs.skipped ? "⏭️ SKIP" : results.bccs.success ? "✅ OK" : "❌ " + results.bccs.error}`
   );
   if (logFile) console.log(`   Log: logs/runs/${logFile}`);
   console.log("═".repeat(60) + "\n");
 
   res.json({
     success: overallSuccess,
+    partial_success: partialSuccess,
     test_mode: CONFIG.test_mode, // { cskh: bool, cauhinh: bool }
+    automation_options: { run_main_flow: runMainFlow, run_bccs: runBccs },
     results,
     total_duration_ms: totalDuration,
     log_file: logFile,
@@ -649,6 +697,15 @@ function parseLegacyAddress(address) {
     ward: parts.at(-3) || "",
     district: parts.at(-2) || "",
     province: parts.at(-1) || "",
+  };
+}
+
+function formatSkippedResult(label) {
+  return {
+    success: true,
+    skipped: true,
+    duration_ms: null,
+    message: `${label} đã bỏ qua theo lựa chọn người dùng.`,
   };
 }
 

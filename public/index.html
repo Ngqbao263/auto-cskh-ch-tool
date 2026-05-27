@@ -211,6 +211,11 @@
             border-color: rgba(245, 158, 11, 0.2);
         }
 
+        .section-card.validation-error {
+            border-color: rgba(239, 68, 68, 0.65);
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.10);
+        }
+
         .section-header {
             display: flex;
             align-items: center;
@@ -336,6 +341,15 @@
             font-size: 0.7rem;
         }
 
+        .docs-required-marker {
+            color: var(--amber);
+            font-size: 0.8rem;
+        }
+
+        #sec-docs.docs-optional .docs-required-marker {
+            display: none;
+        }
+
         label .hint {
             font-size: 0.6rem;
             color: var(--text-3);
@@ -353,6 +367,12 @@
             gap: 0.5rem;
             min-width: 0;
             width: 100%;
+        }
+
+        .file-row.file-missing .file-btn {
+            border-color: rgba(239, 68, 68, 0.65);
+            background: #fef2f2;
+            color: #991b1b;
         }
 
         input[type="file"] {
@@ -464,6 +484,46 @@
 
         input[data-required="true"]:not(:placeholder-shown):valid {
             border-color: rgba(16, 185, 129, 0.4);
+        }
+
+        input.is-invalid,
+        select.is-invalid,
+        textarea.is-invalid {
+            border-color: var(--danger) !important;
+            background: #fef2f2 !important;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12) !important;
+        }
+
+        .field-error {
+            color: var(--danger);
+            font-size: 0.68rem;
+            line-height: 1.35;
+            margin-top: 2px;
+        }
+
+        .validation-toast {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            z-index: 10000;
+            max-width: min(360px, calc(100vw - 32px));
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            background: #fef2f2;
+            color: #991b1b;
+            font-size: 0.82rem;
+            font-weight: 600;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+            opacity: 0;
+            transform: translateY(-8px);
+            pointer-events: none;
+            transition: opacity 0.18s, transform 0.18s;
+        }
+
+        .validation-toast.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         select {
@@ -627,6 +687,70 @@
             color: var(--text-3);
             margin-top: 2px;
             letter-spacing: 0.04em;
+        }
+
+        .run-toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            min-width: 0;
+        }
+
+        .run-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-2);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .run-toggle input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .run-toggle-track {
+            position: relative;
+            width: 38px;
+            height: 22px;
+            border-radius: 999px;
+            background: #cbd5e1;
+            border: 1px solid var(--border);
+            transition: background 0.15s, border-color 0.15s;
+            flex: 0 0 auto;
+        }
+
+        .run-toggle-track::after {
+            content: "";
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 2px;
+            left: 2px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+            transition: transform 0.15s;
+        }
+
+        .run-toggle input:checked + .run-toggle-track {
+            background: var(--success);
+            border-color: rgba(16, 185, 129, 0.45);
+        }
+
+        .run-toggle input:checked + .run-toggle-track::after {
+            transform: translateX(16px);
+        }
+
+        .run-toggle:has(input:disabled) {
+            opacity: 0.55;
+            cursor: not-allowed;
         }
 
         .btn-run {
@@ -1005,6 +1129,11 @@
             font-size: 0.9rem;
         }
 
+        .result-badge-skip {
+            color: var(--text-3);
+            font-size: 0.9rem;
+        }
+
         .result-message {
             font-size: 0.78rem;
             color: var(--text-2);
@@ -1240,6 +1369,7 @@
     </div>
 
     <div class="wrapper">
+        <div id="validation-toast" class="validation-toast" role="status" aria-live="polite"></div>
 
         <!-- ── HEADER ─────────────────────────────────────────────────────────── -->
         <header class="site-header">
@@ -1660,6 +1790,7 @@
             <div class="section-header" onclick="toggleSection('sec-docs')">
                 <div class="section-icon">📎</div>
                 <div class="section-title">Hồ sơ đính kèm
+                    <span class="docs-required-marker" id="docs-required-marker">*</span>
                     <span style="font-weight:400; font-size:0.7rem; color:var(--text-3); margin-left:6px;">(chỉ dùng cho BCCS)</span>
                 </div>
                 <span class="section-count">5 file</span>
@@ -1752,10 +1883,10 @@
                 <div id="progress-bar"></div>
             </div>
 
-            <!-- Banner lỗi validation — hiện khi có trường bắt buộc bị bỏ trống -->
+            <!-- Banner lỗi hệ thống/kết nối -->
             <div id="validation-banner"
                 style="display:none; background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; padding:0.75rem 1rem; margin-bottom:0.75rem; font-size:0.8rem; color:#b91c1c; line-height:1.6;">
-                <strong>⚠️ Vui lòng điền đầy đủ các trường bắt buộc:</strong>
+                <strong>⚠️ Có lỗi xảy ra:</strong>
                 <div id="validation-missing" style="margin-top:4px;"></div>
             </div>
 
@@ -1763,6 +1894,18 @@
                 <button class="btn-logs" onclick="openLogsModal()" title="Xem lịch sử">
                     📂 Lịch sử
                 </button>
+                <div class="run-toggle-group" aria-label="Chọn luồng chạy">
+                    <label class="run-toggle" title="Lưu CSKH và chạy cấu hình Viettel">
+                        <input type="checkbox" id="toggle_main_flow" checked onchange="updateRunOptionsText()">
+                        <span class="run-toggle-track"></span>
+                        <span>CSKH + Viettel</span>
+                    </label>
+                    <label class="run-toggle" title="Chạy module BCCS S-Tracking">
+                        <input type="checkbox" id="toggle_bccs" checked onchange="handleBccsToggleChange()">
+                        <span class="run-toggle-track"></span>
+                        <span>BCCS</span>
+                    </label>
+                </div>
                 <button class="btn-run" id="btn-run" onclick="runAutomation()">
                     <span id="btn-label">Bắt đầu</span>
                 </button>
@@ -1831,6 +1974,10 @@
      JAVASCRIPT
 ────────────────────────────────────────────────────────────────────────── -->
     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            updateRunOptionsText();
+            updateDocsRequiredState();
+        });
         // ── Section collapse/expand ──────────────────────────────────────────────────
         function toggleSection(id) {
             document.getElementById(id).classList.toggle('collapsed');
@@ -2289,6 +2436,81 @@
         }
 
         // ── Collect masterData from form ─────────────────────────────────────────────
+        function getAutomationOptions() {
+            return {
+                run_main_flow: document.getElementById('toggle_main_flow')?.checked !== false,
+                run_bccs: document.getElementById('toggle_bccs')?.checked !== false,
+            };
+        }
+
+        function updateRunOptionsText() {
+            const sub = document.getElementById('action-sub');
+            if (!sub) return;
+            const options = getAutomationOptions();
+            const labels = [];
+            if (options.run_main_flow) labels.push('CSKH + Viettel');
+            if (options.run_bccs) labels.push('BCCS');
+            sub.textContent = labels.length
+                ? `Sẽ chạy: ${labels.join(', ')}`
+                : 'Vui lòng bật ít nhất một luồng trước khi chạy';
+        }
+
+        const DOC_FILE_IDS = ['file_bbnt', 'file_cmnd_sau', 'file_cmnd_truoc', 'file_hop_dong', 'file_phu_luc'];
+
+        function clearDocsValidationState() {
+            document.getElementById('sec-docs')?.classList.remove('validation-error');
+            document.getElementById('sec-docs')?.querySelector('.field-error[data-for="docs"]')?.remove();
+            DOC_FILE_IDS.forEach(id => {
+                document.getElementById(id)?.closest('.file-row')?.classList.remove('file-missing');
+            });
+        }
+
+        function updateDocsRequiredState() {
+            const bccsEnabled = getAutomationOptions().run_bccs;
+            const docsSection = document.getElementById('sec-docs');
+            if (!docsSection) return;
+            docsSection.classList.toggle('docs-optional', !bccsEnabled);
+            if (!bccsEnabled) clearDocsValidationState();
+        }
+
+        function handleBccsToggleChange() {
+            updateRunOptionsText();
+            updateDocsRequiredState();
+        }
+
+        function validateBccsDocuments() {
+            if (!getAutomationOptions().run_bccs) {
+                clearDocsValidationState();
+                return true;
+            }
+
+            const missingIds = DOC_FILE_IDS.filter(id => {
+                const input = document.getElementById(id);
+                return !input?.files?.length;
+            });
+            if (!missingIds.length) {
+                clearDocsValidationState();
+                return true;
+            }
+
+            const docsSection = document.getElementById('sec-docs');
+            docsSection?.classList.remove('collapsed');
+            docsSection?.classList.add('validation-error');
+            docsSection?.querySelector('.field-error[data-for="docs"]')?.remove();
+            DOC_FILE_IDS.forEach(id => {
+                const row = document.getElementById(id)?.closest('.file-row');
+                row?.classList.toggle('file-missing', missingIds.includes(id));
+            });
+            const docsError = document.createElement('div');
+            docsError.className = 'field-error';
+            docsError.dataset.for = 'docs';
+            docsError.textContent = 'Vui lòng upload đầy đủ Hồ sơ đính kèm khi bật luồng BCCS!';
+            docsSection?.querySelector('.section-body')?.prepend(docsError);
+            showValidationToast('Vui lòng điền đủ thông tin');
+            docsSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+
         function collectMasterData() {
             updateOwnerAddressRaw();
             const g = (id) => {
@@ -2365,76 +2587,157 @@
                 so_thang: g('so_thang'),
                 loai_khuyen_mai: g('loai_khuyen_mai'),
                 gia_tri_khuyen_mai: g('gia_tri_khuyen_mai'),
+                automation_options: getAutomationOptions(),
             };
         }
 
-        // ── Validate bắt buộc trước khi gửi ─────────────────────────────────────────
+        // ── Inline validation trước khi gửi ─────────────────────────────────────────
+        let validationToastTimer = null;
+
+        const BASE_REQUIRED_FIELDS = [
+            ['ship_code', 'Mã tàu'],
+            ['serial_number', 'Serial Number'],
+            ['bien_so_tau', 'Biển số tàu'],
+            ['ma_nganh_nghe', 'Mã ngành nghề'],
+            ['ma_cang', 'Mã cảng'],
+            ['ma_cang_phu', 'Mã cảng phụ'],
+            ['tinh_thanh', 'Tỉnh thành'],
+            ['owner_name', 'Tên chủ tàu'],
+            ['owner_phone', 'SĐT chủ tàu'],
+            ['owner_cccd', 'CCCD chủ tàu'],
+            ['owner_loai_ma_so', 'Loại mã số chủ tàu'],
+            ['owner_fax', 'Số Fax chủ tàu'],
+            ['owner_email', 'Email chủ tàu'],
+            ['owner_address_province', 'Tỉnh/TP chủ tàu'],
+            ['owner_address_district', 'Quận/Huyện chủ tàu'],
+            ['owner_address_precinct', 'Phường/Xã chủ tàu'],
+            ['owner_address_group_street', 'Tổ/Thôn chủ tàu'],
+            ['owner_address_street', 'Địa chỉ chủ tàu'],
+            ['so_thang', 'Số tháng'],
+            ['tong_tai_trong', 'Tổng tải trọng'],
+            ['chieu_dai_toan_bo', 'Chiều dài toàn bộ'],
+            ['chieu_rong', 'Chiều rộng'],
+            ['cong_suat', 'Công suất'],
+            ['tan_so_vhf', 'Tần số VHF'],
+            ['tan_so_hf', 'Tần số HF'],
+            ['so_di_dong', 'Số di động'],
+        ];
+
+        function showValidationToast(message = 'Vui lòng điền đủ thông tin') {
+            const toast = document.getElementById('validation-toast');
+            if (!toast) return;
+            toast.textContent = message;
+            toast.classList.add('visible');
+            clearTimeout(validationToastTimer);
+            validationToastTimer = setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 3000);
+        }
+
+        function clearErrors() {
+            document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            document.querySelectorAll('.field-error').forEach(el => el.remove());
+            document.getElementById('validation-banner')?.style.setProperty('display', 'none');
+            document.getElementById('validation-toast')?.classList.remove('visible');
+            clearTimeout(validationToastTimer);
+            clearDocsValidationState();
+        }
+
+        function clearFieldError(el) {
+            if (!el) return;
+            el.classList.remove('is-invalid');
+            const group = el.closest('.field-group') || el.parentElement;
+            group?.querySelector(`.field-error[data-for="${el.id}"]`)?.remove();
+        }
+
+        function getFieldLabel(el, fallback) {
+            if (fallback) return fallback;
+            if (el?.dataset?.name) return el.dataset.name;
+            const label = el?.id
+                ? Array.from(document.querySelectorAll('label[for]')).find(item => item.getAttribute('for') === el.id)
+                : null;
+            const text = (label?.textContent || el?.closest('.field-group')?.querySelector('label')?.textContent || el?.placeholder || 'trường này')
+                .replace('*', '')
+                .replace(/tuỳ chọn/gi, '')
+                .trim();
+            return text || 'trường này';
+        }
+
+        function fieldVerb(el) {
+            return el?.tagName === 'SELECT' ? 'chọn' : 'điền';
+        }
+
+        function addFieldError(el, label) {
+            if (!el) return;
+            el.classList.add('is-invalid');
+            const group = el.closest('.field-group') || el.parentElement;
+            if (!group) return;
+
+            const oldError = group.querySelector(`.field-error[data-for="${el.id}"]`);
+            if (oldError) oldError.remove();
+
+            const error = document.createElement('div');
+            error.className = 'field-error';
+            error.dataset.for = el.id || '';
+            error.textContent = `Vui lòng ${fieldVerb(el)} ${getFieldLabel(el, label)}`;
+            el.insertAdjacentElement('afterend', error);
+        }
+
+        function isEmptyField(el) {
+            if (!el || el.disabled) return false;
+            if (el.type === 'checkbox') return !el.checked;
+            return String(el.value ?? '').trim() === '';
+        }
+
+        function focusFirstInvalid(firstInvalidElement) {
+            if (!firstInvalidElement) return;
+            firstInvalidElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => firstInvalidElement.focus({ preventScroll: true }), 250);
+        }
+
+        document.addEventListener('input', (event) => {
+            if (event.target?.matches?.('input, select, textarea')) clearFieldError(event.target);
+        });
+        document.addEventListener('change', (event) => {
+            if (event.target?.matches?.('input, select, textarea')) clearFieldError(event.target);
+        });
+
         function validateForm(data) {
-            const isEmpty = (v) => v === null || v === undefined || String(v).trim() === '';
+            const requiredFields = [...BASE_REQUIRED_FIELDS];
 
-            // Trường luôn bắt buộc
-            const required = {
-                ship_code: 'Mã tàu',
-                serial_number: 'Serial Number',
-                bien_so_tau: 'Biển số tàu',
-                ma_nganh_nghe: 'Mã ngành nghề',
-                ma_cang: 'Mã cảng',
-                ma_cang_phu: 'Mã cảng phụ',
-                tinh_thanh: 'Tỉnh thành',
-                // Chủ tàu
-                owner_name: 'Tên chủ tàu',
-                owner_phone: 'SĐT chủ tàu',
-                owner_cccd: 'CCCD chủ tàu',
-                owner_loai_ma_so: 'Loại mã số (chủ tàu)',
-                owner_fax: 'Số Fax chủ tàu',
-                owner_email: 'Email chủ tàu',
-                owner_address: 'Địa chỉ chủ tàu',
-                owner_address_province: 'Tỉnh/TP chủ tàu',
-                owner_address_district: 'Quận/Huyện chủ tàu',
-                owner_address_precinct: 'Phường/Xã chủ tàu',
-                owner_address_group_street: 'Tổ/Thôn chủ tàu',
-                owner_address_street: 'Địa chỉ chủ tàu',
-                // Kỹ thuật & thanh toán
-                so_thang: 'Số tháng',
-                tong_tai_trong: 'Tổng tải trọng',
-                chieu_dai_toan_bo: 'Chiều dài toàn bộ',
-                chieu_rong: 'Chiều rộng',
-                cong_suat: 'Công suất',
-                tan_so_vhf: 'Tần số VHF',
-                tan_so_hf: 'Tần số HF',
-                so_di_dong: 'Số di động',
-            };
-
-            const missing = Object.entries(required)
-                .filter(([k]) => isEmpty(data[k]))
-                .map(([, label]) => label);
-
-            // Trường người yêu cầu: chỉ bắt buộc khi KHÔNG phải chủ tàu
             if (!data.requester_is_owner) {
-                const requesterRequired = {
-                    requester_name: 'Tên người yêu cầu',
-                    requester_phone: 'SĐT người yêu cầu',
-                };
-                Object.entries(requesterRequired).forEach(([k, label]) => {
-                    if (isEmpty(data[k])) missing.push(label);
-                });
+                requiredFields.push(
+                    ['requester_name', 'Tên người yêu cầu'],
+                    ['requester_phone', 'SĐT người yêu cầu'],
+                );
             }
 
-            // Trường thuyền trưởng: chỉ bắt buộc khi KHÔNG phải chủ tàu
             if (!data.captain_is_owner) {
-                const captainRequired = {
-                    captain_name: 'Tên thuyền trưởng',
-                    captain_phone: 'SĐT thuyền trưởng',
-                    captain_cccd: 'CCCD thuyền trưởng',
-                    captain_address: 'Địa chỉ thuyền trưởng',
-                    captain_fax: 'Số Fax thuyền trưởng',
-                };
-                Object.entries(captainRequired).forEach(([k, label]) => {
-                    if (isEmpty(data[k])) missing.push(label);
-                });
+                requiredFields.push(
+                    ['captain_name', 'Tên thuyền trưởng'],
+                    ['captain_phone', 'SĐT thuyền trưởng'],
+                    ['captain_cccd', 'CCCD thuyền trưởng'],
+                    ['captain_address', 'Địa chỉ thuyền trưởng'],
+                    ['captain_fax', 'Số Fax thuyền trưởng'],
+                );
             }
 
-            return missing;
+            let firstInvalidElement = null;
+            let invalidCount = 0;
+            requiredFields.forEach(([id, label]) => {
+                const el = document.getElementById(id);
+                if (!isEmptyField(el)) return;
+                addFieldError(el, label);
+                invalidCount += 1;
+                if (!firstInvalidElement) firstInvalidElement = el;
+            });
+
+            if (invalidCount > 0) {
+                showValidationToast('Vui lòng điền đủ thông tin');
+                focusFirstInvalid(firstInvalidElement);
+                return false;
+            }
+            return true;
         }
 
         // ── UI State helpers ─────────────────────────────────────────────────────────
@@ -2448,6 +2751,8 @@
             const barEl = document.getElementById('progress-bar');
 
             btn.disabled = loading;
+            document.getElementById('toggle_main_flow')?.toggleAttribute('disabled', loading);
+            document.getElementById('toggle_bccs')?.toggleAttribute('disabled', loading);
 
             if (loading) {
                 btnLabel.textContent = 'Đang chạy...';
@@ -2465,7 +2770,7 @@
 
             } else {
                 btnLabel.textContent = 'Bắt đầu';
-                sub.textContent = 'Điền form và nhấn nút để bắt đầu';
+                updateRunOptionsText();
                 clearInterval(progressInterval);
                 barEl.style.width = '100%';
                 setTimeout(() => {
@@ -2480,30 +2785,30 @@
             const panel = document.getElementById('result-panel');
             const header = document.getElementById('result-header');
 
-            const cskhOk    = data.results?.cskh?.success;
-            const cauhinhOk = data.results?.cauhinh?.success;
-            const bccsOk    = data.results?.bccs?.success;
-            // overallSuccess chỉ tính CSKH + Viettel (BCCS lỗi không kéo overall xuống)
-            const allOk  = cskhOk && cauhinhOk;
-            const noneOk = !cskhOk && !cauhinhOk;
+            const resultValues = Object.values(data.results || {});
+            const activeResults = resultValues.filter(item => item && !item.skipped);
+            const allOk = activeResults.length > 0 && activeResults.every(item => item.success);
+            const noneOk = activeResults.length === 0 || activeResults.every(item => !item.success);
+            const partialOk = activeResults.some(item => item.success) && activeResults.some(item => !item.success);
 
             // Header
             header.className = 'result-header ' + (allOk ? 'success' : noneOk ? 'error' : 'partial');
             document.getElementById('result-header-icon').textContent = allOk ? '✅' : noneOk ? '❌' : '⚠️';
             document.getElementById('result-header-text').textContent =
-                allOk  ? 'CSKH và Viettel hoàn tất thành công!' :
-                noneOk ? 'CSKH và Viettel đều thất bại — kiểm tra log.' :
-                         'Một hệ thống thành công, một thất bại — kiểm tra chi tiết.';
+                allOk ? 'Các luồng đã bật hoàn tất thành công!' :
+                partialOk ? 'Một số luồng thành công, một số luồng thất bại — kiểm tra chi tiết.' :
+                'Các luồng đã bật đều thất bại — kiểm tra log.';
 
             // Helper: điền 1 result-item
             function fillResultItem(prefix, obj) {
-                document.getElementById(prefix + '-badge').textContent  = obj.success ? '✅' : '❌';
-                document.getElementById(prefix + '-badge').className     = 'result-badge-' + (obj.success ? 'ok' : 'err');
+                const skipped = Boolean(obj.skipped);
+                document.getElementById(prefix + '-badge').textContent  = skipped ? '⏭' : obj.success ? '✅' : '❌';
+                document.getElementById(prefix + '-badge').className     = skipped ? 'result-badge-skip' : 'result-badge-' + (obj.success ? 'ok' : 'err');
                 document.getElementById(prefix + '-message').textContent = obj.message || '';
                 document.getElementById(prefix + '-duration').textContent = obj.duration_ms
                     ? `⏱ ${(obj.duration_ms / 1000).toFixed(1)}s` : '';
                 const errEl = document.getElementById(prefix + '-error');
-                if (!obj.success && obj.error) { errEl.textContent = obj.error; errEl.style.display = 'block'; }
+                if (!skipped && !obj.success && obj.error) { errEl.textContent = obj.error; errEl.style.display = 'block'; }
                 else { errEl.style.display = 'none'; }
             }
 
@@ -2538,6 +2843,10 @@
                 nameEl.textContent = file.name;
                 nameEl.title = file.name;
                 nameEl.classList.add('has-file');
+                input.closest('.file-row')?.classList.remove('file-missing');
+                if (DOC_FILE_IDS.every(id => document.getElementById(id)?.files?.length)) {
+                    document.getElementById('sec-docs')?.classList.remove('validation-error');
+                }
             } else {
                 nameEl.textContent = 'Chưa chọn';
                 nameEl.title = '';
@@ -2552,7 +2861,12 @@
 
         // ── MAIN: Run Automation ─────────────────────────────────────────────────────
         async function runAutomation() {
+            clearErrors();
             const masterData = collectMasterData();
+            if (!masterData.automation_options.run_main_flow && !masterData.automation_options.run_bccs) {
+                showValidationToast('Vui lòng bật ít nhất một luồng cần chạy.');
+                return;
+            }
 
             // Gắn user_id từ localStorage vào payload
             try {
@@ -2560,17 +2874,8 @@
                 if (u?.id) masterData.user_id = u.id;
             } catch { /* không làm gì */ }
 
-            // Client-side validation — hiện banner thay vì alert()
-            const missing = validateForm(masterData);
-            const banner = document.getElementById('validation-banner');
-            const bannerList = document.getElementById('validation-missing');
-            if (missing.length > 0) {
-                bannerList.innerHTML = missing.map(f => `• ${f}`).join('<br>');
-                banner.style.display = 'block';
-                banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                return;
-            }
-            banner.style.display = 'none';
+            if (!validateForm(masterData)) return;
+            if (!validateBccsDocuments()) return;
 
             // Clear kết quả cũ
             document.getElementById('result-panel').classList.remove('visible');
