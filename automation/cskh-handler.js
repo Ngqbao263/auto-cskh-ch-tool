@@ -33,7 +33,8 @@ const mapping = require("../data/mapping.json");
 const TARGET = mapping.targets.cskh;
 
 const CSKH_URL = "https://cskh.sdvico.vn/customer-care/s-tracking";
-const SCREENSHOT_DIR = path.resolve(__dirname, "../logs/errors");
+const RUNTIME_ROOT = process.pkg ? path.dirname(process.execPath) : path.resolve(__dirname, "..");
+const SCREENSHOT_DIR = path.join(RUNTIME_ROOT, "logs", "errors");
 
 // Timing (ms)
 const T = {

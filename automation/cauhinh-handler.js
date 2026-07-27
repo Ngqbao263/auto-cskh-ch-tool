@@ -39,7 +39,8 @@ const TARGET = mapping.targets.cauhinh;
 
 const CAUHINH_URL = "https://stracking.viettel.io/map";
 const GROUPLIST_URL = "https://stracking.viettel.io/groupList";
-const SCREENSHOT_DIR = path.resolve(__dirname, "../logs/errors");
+const RUNTIME_ROOT = process.pkg ? path.dirname(process.execPath) : path.resolve(__dirname, "..");
+const SCREENSHOT_DIR = path.join(RUNTIME_ROOT, "logs", "errors");
 
 // Timing (ms)
 const T = {
@@ -184,6 +185,32 @@ const SEL_BTN_EDIT_DEVICE = [
   "a.edit:visible", // class edit
 ];
 
+const SEL_DEVICE_ROWS = [
+  '#smlDevicesTable tbody tr[id^="device_"]',
+  '#smDevicesTable tbody tr[id^="device_"]',
+  'table.dataTable tbody tr[id^="device_"]',
+].join(", ");
+
+const SEL_DEVICE_ROW_EDIT = [
+  'a[title="Sá»­a"]:visible',
+  'a[title="Sửa"]:visible',
+  "a.table-action.edit:visible",
+  "a:has(i.fa-edit):visible",
+  "a:has(.fa-edit):visible",
+  "a:has(.glyphicon-edit):visible",
+  "a.btn-info:visible",
+  "td:last-child a:visible",
+].join(", ");
+
+const SEL_DEVICE_SERIAL = '#serial, input[name="serial"]';
+
+const SEL_MODAL_CLOSE = [
+  'button.close[data-dismiss="modal"]:visible',
+  '.modal:visible button.close:visible',
+  'button:has-text("Đóng"):visible',
+  'button:has-text("ÄÃ³ng"):visible',
+].join(", ");
+
 const SEL_MODAL_FORM1_READY = [
   "input#deviceName:visible",
   '[role="dialog"] input#deviceName',
@@ -314,6 +341,150 @@ async function waitForAny(page, selectors, label, timeout = 10000) {
 // NAVIGATION: navigateToEditForm (8 bước)
 // ─────────────────────────────────────────────────────────────────────────────
 
+function normalizeSerial(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, "")
+    .toUpperCase();
+}
+
+function buildShipSearchTerms(shipCode) {
+  const raw = String(shipCode || "").trim();
+  const numericParts = raw.match(/\d{3,}/g) || [];
+  return [...new Set([raw, ...numericParts].filter(Boolean))];
+}
+
+async function performGroupSearch(page, searchTerm) {
+  const searchInputEl = page.locator(SEL_SEARCH_INPUT.join(", ")).first();
+  await searchInputEl.waitFor({ state: "visible", timeout: 8000 });
+  await searchInputEl.clear();
+  await searchInputEl.fill(searchTerm);
+  console.log(`  Da dien "${searchTerm}" vao o tim kiem.`);
+  await page.waitForTimeout(300);
+
+  const searchBtnFound = await clickButtonByFallback(
+    page,
+    SEL_BTN_SEARCH,
+    "kinh lup Search",
+    { required: false }
+  );
+  if (!searchBtnFound) {
+    await searchInputEl.press("Enter");
+    console.log("  Nhan Enter de search.");
+  }
+  await page.waitForTimeout(T.search_result);
+}
+
+async function searchAndOpenShipFolder(page, masterData) {
+  const shipCode = masterData.ship_code;
+  const terms = buildShipSearchTerms(shipCode);
+
+  if (!terms.length) {
+    throw new Error("[Cau hinh] Thieu ma tau de tim thu muc Viettel.");
+  }
+
+  for (const term of terms) {
+    console.log(`\n  [Nav 4/7] Tim kiem thu muc tau bang "${term}"...`);
+    await performGroupSearch(page, term);
+    console.log("  Ket qua tim kiem da tai.");
+
+    console.log(`\n  [Nav 5/7] Click node phu hop voi "${term}" tren cay...`);
+    const clicked = await clickButtonByFallback(
+      page,
+      getShipNodeSelectors(term),
+      `node "${term}"`,
+      { required: false, timeout: 1500 }
+    );
+    if (clicked) {
+      await page.waitForTimeout(T.after_click);
+      return term;
+    }
+  }
+
+  throw new Error(
+    `[Cau hinh] Khong tim thay thu muc tau "${shipCode}". Da thu: ${terms.join(", ")}`
+  );
+}
+
+async function closeDeviceModal(page) {
+  const closeBtn = page.locator(SEL_MODAL_CLOSE).first();
+  if (await closeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await closeBtn.click({ timeout: 10000 });
+    await page.waitForTimeout(800);
+    return;
+  }
+
+  await page.keyboard.press("Escape").catch(() => {});
+  await page.waitForTimeout(800);
+}
+
+async function readOpenModalSerial(page) {
+  const serialInput = page.locator(SEL_DEVICE_SERIAL).first();
+  await serialInput.waitFor({ state: "visible", timeout: 8000 });
+  return await serialInput.inputValue().catch(() => "");
+}
+
+async function openDeviceModalBySerial(page, masterData) {
+  const targetSerial = normalizeSerial(masterData.serial_number);
+  if (!targetSerial) {
+    throw new Error("[Cau hinh] Thieu Serial Number de xac dinh dung phuong tien.");
+  }
+
+  const rows = page.locator(SEL_DEVICE_ROWS);
+  const rowCount = await rows.count();
+  if (!rowCount) {
+    throw new Error(
+      `[Cau hinh] Khong thay dong phuong tien nao trong bang. Selector: ${SEL_DEVICE_ROWS}`
+    );
+  }
+
+  const checkedRows = [];
+  console.log(`  Tim phuong tien theo Serial: ${masterData.serial_number}`);
+  console.log(`  So dong dang hien thi trong bang: ${rowCount}`);
+
+  for (let index = 0; index < rowCount; index += 1) {
+    const row = rows.nth(index);
+    const rowId = await row.getAttribute("id").catch(() => `row_${index + 1}`);
+    const rowText = (await row.innerText().catch(() => ""))
+      .replace(/\s+/g, " ")
+      .trim();
+    const editIcon = row.locator(SEL_DEVICE_ROW_EDIT).first();
+
+    if (!(await editIcon.isVisible({ timeout: 3000 }).catch(() => false))) {
+      checkedRows.push(`${index + 1}. ${rowId}: khong thay icon sua`);
+      continue;
+    }
+
+    console.log(`  Mo dong ${index + 1}/${rowCount}: ${rowText || rowId}`);
+    await editIcon.click({ timeout: 10000 });
+    await page.waitForTimeout(T.modal_open);
+    await waitForAny(
+      page,
+      SEL_MODAL_FORM1_READY,
+      "modal Form 1 (Thong tin thiet bi)",
+      12000
+    );
+
+    const modalSerial = await readOpenModalSerial(page);
+    checkedRows.push(`${index + 1}. ${rowId}: serial=${modalSerial || "?"}`);
+
+    if (normalizeSerial(modalSerial) === targetSerial) {
+      console.log(`  Serial khop: ${modalSerial}. Tiep tuc cau hinh dong nay.`);
+      return;
+    }
+
+    console.warn(
+      `  Serial khong khop. Modal=${modalSerial || "?"}, Master=${masterData.serial_number}`
+    );
+    await closeDeviceModal(page);
+  }
+
+  throw new Error(
+    `[Cau hinh] Khong tim thay phuong tien co Serial "${masterData.serial_number}".\n` +
+      `Da kiem tra:\n${checkedRows.map((line) => `  - ${line}`).join("\n")}`
+  );
+}
+
 async function navigateToEditForm(page, masterData) {
   const shipCode = masterData.ship_code;
 
@@ -417,37 +588,8 @@ async function navigateToEditForm(page, masterData) {
   await waitForAny(page, SEL_PAGE_NHOM_READY, "trang Danh sách nhóm", 15000);
   console.log(`  ✔ Trang Danh sách nhóm đã tải. [Nav 3 hoàn tất]`);
 
-  // [Nav 4] Tìm kiếm tàu
-  console.log(`\n  [Nav 4/7] Tìm kiếm tàu "${shipCode}"...`);
-  const searchInputEl = page.locator(SEL_SEARCH_INPUT.join(", ")).first();
-  await searchInputEl.waitFor({ state: "visible", timeout: 8000 });
-  await searchInputEl.clear();
-  await searchInputEl.fill(shipCode);
-  console.log(`  ⌨️  Đã điền "${shipCode}" vào ô tìm kiếm.`);
-  await page.waitForTimeout(300);
-
-  const searchBtnFound = await clickButtonByFallback(
-    page,
-    SEL_BTN_SEARCH,
-    "kính lúp Search",
-    { required: false }
-  );
-  if (!searchBtnFound) {
-    await searchInputEl.press("Enter");
-    console.log(`  ⌨️  Nhấn Enter để search.`);
-  }
-  await page.waitForTimeout(T.search_result);
-  console.log(`  ✔ Kết quả tìm kiếm đã tải.`);
-
-  // [Nav 5] Click tên tàu trong cây
-  console.log(`\n  [Nav 5/7] Click node "${shipCode}" trên cây...`);
-  await clickButtonByFallback(
-    page,
-    getShipNodeSelectors(shipCode),
-    `node "${shipCode}"`
-  );
-  await page.waitForTimeout(T.after_click);
-  console.log(`  ✔ Đã chọn thư mục tàu.`);
+  const openedSearchTerm = await searchAndOpenShipFolder(page, masterData);
+  console.log(`  Da chon thu muc tau bang tu khoa "${openedSearchTerm}".`);
 
   // [Nav 6] Tab "Thêm/xóa phương tiện"
   console.log(`\n  [Nav 6/7] Click tab "Thêm/xóa phương tiện"...`);
@@ -465,17 +607,10 @@ async function navigateToEditForm(page, masterData) {
   );
   console.log(`  ✔ Tab và bảng thiết bị đã load.`);
 
-  // [Nav 7] Click icon Chỉnh sửa → mở modal Form 1
-  console.log(`\n  [Nav 7/7] Click icon Chỉnh sửa → mở modal cấu hình...`);
-  await clickButtonByFallback(page, SEL_BTN_EDIT_DEVICE, "icon Chỉnh sửa");
-  await page.waitForTimeout(T.modal_open);
-  await waitForAny(
-    page,
-    SEL_MODAL_FORM1_READY,
-    "modal Form 1 (Thông tin thiết bị)",
-    12000
-  );
-  console.log(`  ✔ Modal đã mở — Form 1 sẵn sàng.`);
+  // [Nav 7] Duyet tung dong, mo modal va kiem tra Serial truoc khi cau hinh
+  console.log(`\n  [Nav 7/7] Tim dung phuong tien theo Serial roi mo modal cau hinh...`);
+  await openDeviceModalBySerial(page, masterData);
+  console.log(`  Modal da mo dung phuong tien - Form 1 san sang.`);
 
   console.log("\n  ✅ Navigation hoàn tất (7/7 bước).");
   console.log("─".repeat(60));

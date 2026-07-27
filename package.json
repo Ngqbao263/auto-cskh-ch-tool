@@ -1,11 +1,14 @@
 {
   "name": "auto-cskh-ch-tool",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
+    "start": "node server.js",
     "test": "npm run test:bccs-address",
     "test:bccs-address": "node scripts/test-bccs-address-popup.js",
-    "build:address-convert": "python scripts/build-address-convert-db.py"
+    "build:address-convert": "python scripts/build-address-convert-db.py",
+    "build:exe": "pkg server.js --targets node22-win-x64 --output dist/auto-cskh.exe",
+    "build:dist": "powershell -ExecutionPolicy Bypass -File scripts/build-dist.ps1"
   },
   "keywords": [],
   "author": "",
@@ -17,9 +20,26 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "multer": "^2.1.1",
-    "playwright": "^1.60.0"
+    "playwright": "^1.60.0",
+    "chrome-remote-interface": "^0.33.3"
   },
   "devDependencies": {
+    "@yao-pkg/pkg": "^6.5.1",
     "nodemon": "^3.1.14"
+  },
+  "pkg": {
+    "scripts": [
+      "server.js",
+      "automation/**/*.js"
+    ],
+    "assets": [
+      "public/**/*",
+      "data/mapping.json",
+      "node_modules/playwright-core/browsers.json"
+    ],
+    "targets": [
+      "node22-win-x64"
+    ],
+    "outputPath": "dist"
   }
 }

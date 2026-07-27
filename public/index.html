@@ -6,13 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SDVICO — Hệ thống nhập liệu tự động</title>
 
-    <!-- Fonts: Syne (display) + JetBrains Mono (data inputs) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500&display=swap"
-        rel="stylesheet" />
-
     <style>
         /* ─── DESIGN TOKENS ──────────────────────────────────────────────── */
         :root {
@@ -46,6 +39,7 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            font-family: "Times New Roman", Times, serif;
         }
 
         body {
@@ -54,9 +48,36 @@
             background-image:
                 radial-gradient(ellipse 80% 50% at 20% -10%, rgba(203, 213, 225, 0.5) 0%, transparent 60%),
                 radial-gradient(ellipse 60% 40% at 80% 110%, rgba(13, 148, 136, 0.06) 0%, transparent 55%);
-            font-family: 'Inter', sans-serif;
+            font-family: "Times New Roman", Times, serif;
             color: var(--text-1);
             overflow-x: hidden;
+        }
+
+        button,
+        input,
+        select,
+        textarea,
+        label,
+        .brand-title,
+        .brand-sub,
+        .status-pill,
+        .badge,
+        .section-title,
+        .section-count,
+        .modal-title,
+        .modal-body,
+        .result-header,
+        .result-target-name,
+        .result-message,
+        .result-error,
+        .result-duration,
+        .file-btn,
+        .file-name,
+        .btn-logs,
+        .btn-help,
+        .btn-run {
+            font-family: "Times New Roman", Times, serif !important;
+            letter-spacing: 0;
         }
 
         /* ─── SCAN LINE OVERLAY ──────────────────────────────────────────── */
@@ -376,7 +397,8 @@
         }
 
         input[type="file"] {
-            display: none; /* ẩn input gốc — trigger bằng label */
+            display: none;
+            /* ẩn input gốc — trigger bằng label */
         }
 
         .file-btn {
@@ -429,7 +451,9 @@
             flex-shrink: 0;
         }
 
-        .file-clear:hover { color: var(--danger); }
+        .file-clear:hover {
+            color: var(--danger);
+        }
 
         .docs-note {
             margin-top: 0.75rem;
@@ -739,12 +763,12 @@
             transition: transform 0.15s;
         }
 
-        .run-toggle input:checked + .run-toggle-track {
+        .run-toggle input:checked+.run-toggle-track {
             background: var(--success);
             border-color: rgba(16, 185, 129, 0.45);
         }
 
-        .run-toggle input:checked + .run-toggle-track::after {
+        .run-toggle input:checked+.run-toggle-track::after {
             transform: translateX(16px);
         }
 
@@ -810,6 +834,26 @@
             border-color: rgba(0, 0, 0, 0.25);
         }
 
+        .btn-help {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(13, 148, 136, 0.08);
+            color: var(--teal-lt);
+            font-size: 0.72rem;
+            border: 1px solid rgba(13, 148, 136, 0.28);
+            border-radius: var(--radius);
+            padding: 0.7rem 1rem;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s, background 0.15s;
+        }
+
+        .btn-help:hover {
+            color: var(--teal);
+            background: rgba(13, 148, 136, 0.12);
+            border-color: rgba(13, 148, 136, 0.45);
+        }
+
         /* ─── SPINNER ─────────────────────────────────────────────────────── */
         .spinner {
             width: 16px;
@@ -833,14 +877,16 @@
             z-index: 2000;
             background: var(--navy-950);
             background-image:
-                radial-gradient(ellipse 80% 50% at 20% -10%, rgba(203,213,225,0.5) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 40% at 80% 110%, rgba(13,148,136,0.06) 0%, transparent 55%);
+                radial-gradient(ellipse 80% 50% at 20% -10%, rgba(203, 213, 225, 0.5) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 110%, rgba(13, 148, 136, 0.06) 0%, transparent 55%);
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        #login-overlay.hidden { display: none; }
+        #login-overlay.hidden {
+            display: none;
+        }
 
         .login-card {
             background: var(--navy-900);
@@ -849,7 +895,7 @@
             padding: 2.5rem 2rem;
             width: 100%;
             max-width: 360px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
         }
 
         .login-logo {
@@ -946,16 +992,22 @@
             transition: background 0.15s;
         }
 
-        .btn-login:hover:not(:disabled) { background: var(--amber-dk); }
-        .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-login:hover:not(:disabled) {
+            background: var(--amber-dk);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
 
         /* ─── HEADER USER PILL ───────────────────────────────────────────── */
         .user-pill {
             display: flex;
             align-items: center;
             gap: 8px;
-            background: rgba(217,119,6,0.08);
-            border: 1px solid rgba(217,119,6,0.2);
+            background: rgba(217, 119, 6, 0.08);
+            border: 1px solid rgba(217, 119, 6, 0.2);
             border-radius: 100px;
             padding: 4px 10px 4px 12px;
             font-size: 0.72rem;
@@ -965,7 +1017,7 @@
 
         .btn-logout {
             background: none;
-            border: 1px solid rgba(217,119,6,0.3);
+            border: 1px solid rgba(217, 119, 6, 0.3);
             border-radius: 100px;
             padding: 2px 8px;
             font-size: 0.65rem;
@@ -975,7 +1027,9 @@
             transition: background 0.15s;
         }
 
-        .btn-logout:hover { background: rgba(217,119,6,0.12); }
+        .btn-logout:hover {
+            background: rgba(217, 119, 6, 0.12);
+        }
 
         /* ─── AUTOCOMPLETE DROPDOWN ─────────────────────────────────────── */
         .autocomplete-list {
@@ -1301,6 +1355,41 @@
             color: var(--danger);
         }
 
+        .help-content {
+            color: var(--text-2);
+            font-size: 0.92rem;
+            line-height: 1.65;
+        }
+
+        .help-content h3 {
+            color: var(--text-1);
+            font-size: 1rem;
+            margin: 0.85rem 0 0.35rem;
+        }
+
+        .help-content h3:first-child {
+            margin-top: 0;
+        }
+
+        .help-content ul,
+        .help-content ol {
+            padding-left: 1.35rem;
+            margin: 0.35rem 0 0.7rem;
+        }
+
+        .help-content li {
+            margin-bottom: 0.35rem;
+        }
+
+        .help-note {
+            background: #f8fafc;
+            border-left: 3px solid var(--amber);
+            border-radius: var(--radius);
+            padding: 0.75rem 0.9rem;
+            margin-top: 0.85rem;
+            color: var(--text-2);
+        }
+
         /* ─── RESPONSIVE ─────────────────────────────────────────────────── */
         @media (max-width: 720px) {
 
@@ -1354,13 +1443,13 @@
             <form id="login-form" autocomplete="on">
                 <div class="login-field">
                     <label for="login-username">Tên đăng nhập</label>
-                    <input type="text" id="login-username" name="username"
-                        placeholder="Nhập tên tài khoản" autocomplete="username" required />
+                    <input type="text" id="login-username" name="username" placeholder="Nhập tên tài khoản"
+                        autocomplete="username" required />
                 </div>
                 <div class="login-field">
                     <label for="login-password">Mật khẩu</label>
-                    <input type="password" id="login-password" name="password"
-                        placeholder="••••••••" autocomplete="current-password" required />
+                    <input type="password" id="login-password" name="password" placeholder="••••••••"
+                        autocomplete="current-password" required />
                 </div>
                 <div id="login-error"></div>
                 <button type="submit" class="btn-login" id="btn-login">Đăng nhập</button>
@@ -1383,6 +1472,9 @@
                 </div>
             </div>
             <div class="header-meta">
+                <button type="button" class="btn-help" onclick="openHelpModal()" title="Xem hướng dẫn sử dụng">
+                    ? Hướng dẫn
+                </button>
                 <div class="target-badges">
                     <span class="badge badge-cskh">CSKH</span>
                     <span class="badge badge-viettel">Cấu hình</span>
@@ -1430,15 +1522,15 @@
                             data-required="true" />
                     </div>
                     <div class="field-group">
-                        <label for="co_hieu">Cờ hiệu <label class="hint">tuỳ chọn</label></label>
+                        <label for="co_hieu">Cờ hiệu</label>
                         <input type="text" id="co_hieu" placeholder="VD: VN" value="CMA1" />
                     </div>
                     <div class="field-group">
-                        <label for="ho_hieu">Hô hiệu <label class="hint">tuỳ chọn</label></label>
+                        <label for="ho_hieu">Hô hiệu</label>
                         <input type="text" id="ho_hieu" placeholder="VD: XVFA" value="CMA2" />
                     </div>
                     <div class="field-group">
-                        <label for="imo">IMO <label class="hint">tuỳ chọn</label></label>
+                        <label for="imo">IMO</label>
                         <input type="text" id="imo" placeholder="VD: 1234567" value="0" />
                     </div>
                     <div class="field-group">
@@ -1446,11 +1538,11 @@
                         <input type="text" id="ma_nganh_nghe" placeholder="VD: TX" required data-required="true" />
                     </div>
                     <div class="field-group">
-                        <label for="loai_tau">Loại tàu <label class="hint">tuỳ chọn</label></label>
+                        <label for="loai_tau">Loại tàu</label>
                         <input type="text" id="loai_tau" placeholder="VD: TACA" value="TACA" />
                     </div>
                     <div class="field-group">
-                        <label for="primary_fishing_tool">Ngư cụ chính <label class="hint">tuỳ chọn</label></label>
+                        <label for="primary_fishing_tool">Ngư cụ chính</label>
                         <input type="text" id="primary_fishing_tool" placeholder="VD: pthanghai" value="pthanghai" />
                     </div>
                 </div>
@@ -1493,7 +1585,7 @@
                             data-required="true" value="0" />
                     </div>
                     <div class="field-group">
-                        <label for="chieu_dai_thiet_ke">Chiều dài TK (m) <label class="hint">tuỳ chọn</label></label>
+                        <label for="chieu_dai_thiet_ke">Chiều dài TK (m)</label>
                         <input type="text" id="chieu_dai_thiet_ke" placeholder="VD: 23.0" min="0" step="0.01"
                             value="0" />
                     </div>
@@ -1528,7 +1620,7 @@
                             data-required="true" value="0" />
                     </div>
                     <div class="field-group">
-                        <label for="van_toc_tu_do">Vận tốc tự do (kn) <label class="hint">tuỳ chọn</label></label>
+                        <label for="van_toc_tu_do">Vận tốc tự do (kn)</label>
                         <input type="text" id="van_toc_tu_do" placeholder="VD: 10.0" min="0" step="0.1" value="0" />
                     </div>
                     <div class="field-group">
@@ -1569,7 +1661,7 @@
             <div class="section-header" onclick="toggleSection('sec-owner')">
                 <div class="section-icon icon-owner">👤</div>
                 <div class="section-title">Thông tin chủ tàu</div>
-                <span class="section-count">15 trường</span>
+                <span class="section-count">17 trường</span>
                 <span class="section-chevron">▼</span>
             </div>
             <div class="section-body">
@@ -1583,6 +1675,10 @@
                         <label for="owner_phone">SĐT chủ tàu <span class="req">*</span></label>
                         <input type="text" id="owner_phone" placeholder="VD: 0901234567" required data-required="true"
                             oninput="syncEmail('owner_phone')" />
+                    </div>
+                    <div class="field-group">
+                        <label for="owner_phone_2">SĐT thứ 2</label>
+                        <input type="text" id="owner_phone_2" placeholder="VD: 0901234567" />
                     </div>
                     <div class="field-group">
                         <label for="owner_cccd">CCCD chủ tàu <span class="req">*</span></label>
@@ -1600,18 +1696,19 @@
                         </select>
                     </div>
                     <div class="field-group">
-                        <label for="issue_date">Ngày cấp CCCD <label class="hint">tuỳ chọn</label></label>
-                        <input type="text" id="issue_date" placeholder="VD: 01/01/2020" maxlength="10"
-                            oninput="formatBirthdayInput(this)" />
+                        <label for="issue_date">Ngày cấp CCCD <span class="req">*</span></label>
+                        <input type="text" id="issue_date" placeholder="VD: 01/01/2020" maxlength="10" required
+                            data-required="true" oninput="formatBirthdayInput(this)" />
                     </div>
                     <div class="field-group">
-                        <label for="issue_place">Nơi cấp CCCD <label class="hint">tuỳ chọn</label></label>
+                        <label for="issue_place">Nơi cấp CCCD <span class="req">*</span></label>
                         <input type="text" id="issue_place" placeholder="VD: Cục Trưởng CCS QLHC..."
-                            value="Cục Trưởng CCS QLHC Về Trật Tự Xã Hội" />
+                            required data-required="true" value="Cục Trưởng CCS QLHC Về Trật Tự Xã Hội" />
                     </div>
                     <div class="field-group">
-                        <label for="vessel_owner_gender">Giới tính <label class="hint">tuỳ chọn</label></label>
-                        <input type="text" id="vessel_owner_gender" placeholder="VD: T" value="T" />
+                        <label for="vessel_owner_gender">Giới tính <span class="req">*</span></label>
+                        <input type="text" id="vessel_owner_gender" placeholder="VD: T" required data-required="true"
+                            value="T" />
                     </div>
                     <div class="field-group">
                         <label for="owner_fax">Số Fax chủ tàu <span class="req">*</span></label>
@@ -1623,9 +1720,9 @@
                             data-required="true" />
                     </div>
                     <div class="field-group">
-                        <label for="owner_birthday">Ngày sinh chủ tàu <label class="hint">tuỳ chọn</label></label>
-                        <input type="text" id="owner_birthday" placeholder="VD: 01/01/1970" maxlength="10"
-                            oninput="formatBirthdayInput(this)" />
+                        <label for="owner_birthday">Ngày sinh chủ tàu <span class="req">*</span></label>
+                        <input type="text" id="owner_birthday" placeholder="VD: 01/01/1970" maxlength="10" required
+                            data-required="true" oninput="formatBirthdayInput(this)" />
                     </div>
                     <input type="hidden" id="owner_address" />
                     <input type="hidden" id="owner_address_province_code" />
@@ -1650,6 +1747,11 @@
                         <label for="owner_address_group_street">Tổ/Thôn <span class="req">*</span></label>
                         <input type="text" id="owner_address_group_street" placeholder="VD: Khu phố 1" required
                             data-required="true" oninput="updateOwnerAddressRaw()" />
+                    </div>
+                    <div class="field-group">
+                        <label for="owner_address_road">Đường/Phố</label>
+                        <input type="text" id="owner_address_road" placeholder="Để trống sẽ dùng mã tàu trong BCCS"
+                            oninput="updateOwnerAddressRaw()" />
                     </div>
                     <div class="field-group full">
                         <label for="owner_address_street">Địa chỉ chủ tàu <span class="req">*</span></label>
@@ -1695,11 +1797,12 @@
                             data-required="true" />
                     </div>
                     <div class="field-group">
-                        <label for="captain_gender">Giới tính <label class="hint">tuỳ chọn</label></label>
+                        <label for="captain_gender">Giới tính</label>
                         <input type="text" id="captain_gender" placeholder="VD: T" value="T" />
                     </div>
                     <div class="field-group">
-                        <label for="captain_birthday">Ngày sinh thuyền trưởng <label class="hint">tuỳ chọn</label></label>
+                        <label for="captain_birthday">Ngày sinh thuyền trưởng <label class="hint">tuỳ
+                                chọn</label></label>
                         <input type="text" id="captain_birthday" placeholder="VD: 01/01/1970" maxlength="10"
                             oninput="formatBirthdayInput(this)" />
                     </div>
@@ -1791,7 +1894,8 @@
                 <div class="section-icon">📎</div>
                 <div class="section-title">Hồ sơ đính kèm
                     <span class="docs-required-marker" id="docs-required-marker">*</span>
-                    <span style="font-weight:400; font-size:0.7rem; color:var(--text-3); margin-left:6px;">(chỉ dùng cho BCCS)</span>
+                    <span style="font-weight:400; font-size:0.7rem; color:var(--text-3); margin-left:6px;">(chỉ dùng cho
+                        BCCS)</span>
                 </div>
                 <span class="section-count">5 file</span>
                 <span class="section-chevron">▼</span>
@@ -1809,7 +1913,8 @@
                             <input type="file" id="file_bbnt" accept=".pdf,.jpg,.jpeg,.png"
                                 onchange="showFileName(this)">
                             <span class="file-name" id="file_bbnt_name">Chưa chọn</span>
-                            <button type="button" class="file-clear" title="Xoá" onclick="clearFile('file_bbnt')">✕</button>
+                            <button type="button" class="file-clear" title="Xoá"
+                                onclick="clearFile('file_bbnt')">✕</button>
                         </div>
                     </div>
 
@@ -1821,7 +1926,8 @@
                             <input type="file" id="file_cmnd_sau" accept=".pdf,.jpg,.jpeg,.png"
                                 onchange="showFileName(this)">
                             <span class="file-name" id="file_cmnd_sau_name">Chưa chọn</span>
-                            <button type="button" class="file-clear" title="Xoá" onclick="clearFile('file_cmnd_sau')">✕</button>
+                            <button type="button" class="file-clear" title="Xoá"
+                                onclick="clearFile('file_cmnd_sau')">✕</button>
                         </div>
                     </div>
 
@@ -1833,7 +1939,8 @@
                             <input type="file" id="file_cmnd_truoc" accept=".pdf,.jpg,.jpeg,.png"
                                 onchange="showFileName(this)">
                             <span class="file-name" id="file_cmnd_truoc_name">Chưa chọn</span>
-                            <button type="button" class="file-clear" title="Xoá" onclick="clearFile('file_cmnd_truoc')">✕</button>
+                            <button type="button" class="file-clear" title="Xoá"
+                                onclick="clearFile('file_cmnd_truoc')">✕</button>
                         </div>
                     </div>
 
@@ -1850,7 +1957,8 @@
                             <input type="file" id="file_hop_dong" accept=".pdf,.jpg,.jpeg,.png"
                                 onchange="showFileName(this)">
                             <span class="file-name" id="file_hop_dong_name">Chưa chọn</span>
-                            <button type="button" class="file-clear" title="Xoá" onclick="clearFile('file_hop_dong')">✕</button>
+                            <button type="button" class="file-clear" title="Xoá"
+                                onclick="clearFile('file_hop_dong')">✕</button>
                         </div>
                     </div>
 
@@ -1862,7 +1970,8 @@
                             <input type="file" id="file_phu_luc" accept=".pdf,.jpg,.jpeg,.png"
                                 onchange="showFileName(this)">
                             <span class="file-name" id="file_phu_luc_name">Chưa chọn</span>
-                            <button type="button" class="file-clear" title="Xoá" onclick="clearFile('file_phu_luc')">✕</button>
+                            <button type="button" class="file-clear" title="Xoá"
+                                onclick="clearFile('file_phu_luc')">✕</button>
                         </div>
                     </div>
 
@@ -1895,10 +2004,15 @@
                     📂 Lịch sử
                 </button>
                 <div class="run-toggle-group" aria-label="Chọn luồng chạy">
-                    <label class="run-toggle" title="Lưu CSKH và chạy cấu hình Viettel">
-                        <input type="checkbox" id="toggle_main_flow" checked onchange="updateRunOptionsText()">
+                    <label class="run-toggle" title="Lưu phiếu CSKH vào Supabase">
+                        <input type="checkbox" id="toggle_cskh" checked onchange="updateRunOptionsText()">
                         <span class="run-toggle-track"></span>
-                        <span>CSKH + Viettel</span>
+                        <span>CSKH</span>
+                    </label>
+                    <label class="run-toggle" title="Chạy cấu hình thiết bị trên Viettel S-Tracking">
+                        <input type="checkbox" id="toggle_cauhinh" checked onchange="updateRunOptionsText()">
+                        <span class="run-toggle-track"></span>
+                        <span>Viettel</span>
                     </label>
                     <label class="run-toggle" title="Chạy module BCCS S-Tracking">
                         <input type="checkbox" id="toggle_bccs" checked onchange="handleBccsToggleChange()">
@@ -1970,6 +2084,59 @@
         </div>
     </div>
 
+    <!-- ── HELP MODAL ─────────────────────────────────────────────────────────── -->
+    <div class="modal-overlay" id="help-modal" onclick="closeHelpModal(event)">
+        <div class="modal-box">
+            <div class="modal-head">
+                <div class="modal-title">Hướng dẫn sử dụng</div>
+                <button class="modal-close" onclick="closeHelpModalDirect()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="help-content">
+                    <h3>1. Chuẩn bị dữ liệu</h3>
+                    <ul>
+                        <li>Điền đầy đủ các trường có dấu sao đỏ trong Master Form.</li>
+                        <li>Kiểm tra kỹ mã tàu, biển số tàu, số serial, CCCD, số điện thoại và thông tin chủ tàu.</li>
+                        <li>Ở phần địa chỉ, chọn đúng Tỉnh/TP, Quận/Huyện, Phường/Xã và nhập Tổ/Thôn trước khi chạy.
+                        </li>
+                    </ul>
+
+                    <h3>2. Chọn luồng chạy</h3>
+                    <ul>
+                        <li>Bật <strong>CSKH</strong> để lưu phiếu vào Supabase.</li>
+                        <li>Bật <strong>Viettel</strong> để cấu hình thiết bị trên Viettel S-Tracking.</li>
+                        <li>Bật <strong>BCCS</strong> để tự động đấu nối trên SFive/BCCS.</li>
+                        <li>Nếu máy không có SFive, hãy tắt <strong>BCCS</strong> và chỉ bật các luồng cần chạy.</li>
+                    </ul>
+
+                    <h3>3. Hồ sơ đính kèm</h3>
+                    <ul>
+                        <li>Khi bật BCCS, cần chọn đủ hồ sơ: biên bản nghiệm thu, CCCD mặt trước, CCCD mặt sau, hợp đồng
+                            và phụ lục hợp đồng.</li>
+                        <li>Khi tắt BCCS, hồ sơ đính kèm không bắt buộc.</li>
+                    </ul>
+
+                    <h3>4. Bắt đầu chạy</h3>
+                    <ol>
+                        <li>Bấm <strong>Bắt đầu</strong>.</li>
+                        <li>Chờ tool tự điền các hệ thống đã bật.</li>
+                        <li>Nếu BCCS yêu cầu captcha, nhập captcha theo hướng dẫn trên trình duyệt/terminal.</li>
+                        <li>Xem kết quả từng luồng ở khung kết quả bên dưới.</li>
+                    </ol>
+
+                    <h3>5. Xem lịch sử</h3>
+                    <p>Bấm nút <strong>Lịch sử</strong> ở cuối form để xem các lần chạy gần nhất và trạng thái từng hệ
+                        thống.</p>
+
+                    <div class="help-note">
+                        Lưu ý: Khi chạy thật, hãy chắc chắn cấu hình <strong>test_mode</strong> trong server đã tắt cho
+                        các luồng cần lưu dữ liệu.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ─────────────────────────────────────────────────────────────────────────
      JAVASCRIPT
 ────────────────────────────────────────────────────────────────────────── -->
@@ -1989,8 +2156,8 @@
             const pos = el.selectionStart;
             const digits = el.value.replace(/\D/g, '').slice(0, 8);
             let formatted = digits;
-            if (digits.length > 4)      formatted = digits.slice(0,2) + '/' + digits.slice(2,4) + '/' + digits.slice(4);
-            else if (digits.length > 2) formatted = digits.slice(0,2) + '/' + digits.slice(2);
+            if (digits.length > 4) formatted = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+            else if (digits.length > 2) formatted = digits.slice(0, 2) + '/' + digits.slice(2);
             el.value = formatted;
             // Giữ cursor ở cuối nếu đang thêm, hoặc giữ nguyên vị trí nếu đang xoá
             const newPos = formatted.length >= pos ? formatted.length : pos;
@@ -2018,15 +2185,20 @@
 
         function composeOwnerAddress() {
             const val = (id) => (document.getElementById(id)?.value || '').trim();
+            const groupStreet = val('owner_address_group_street');
+            const addressRoad = val('owner_address_road');
+            const shouldUseGroupStreet = groupStreet && !/^\d/.test(groupStreet);
             if (ownerConvertedAddressCore) {
                 return [
-                    val('owner_address_group_street'),
+                    shouldUseGroupStreet ? groupStreet : '',
+                    addressRoad,
                     ownerConvertedAddressCore,
                 ].filter(Boolean).join(', ');
             }
 
             return [
-                val('owner_address_group_street'),
+                shouldUseGroupStreet ? groupStreet : '',
+                addressRoad,
                 val('owner_address_precinct'),
                 val('owner_address_district'),
                 val('owner_address_province'),
@@ -2338,13 +2510,13 @@
         // ── Toggle: Captain is Owner ─────────────────────────────────────────────────
         // Map: owner field → captain field
         const CAPTAIN_OWNER_MAP = [
-            ['owner_name',          'captain_name'],
-            ['owner_phone',         'captain_phone'],
-            ['owner_cccd',          'captain_cccd'],
+            ['owner_name', 'captain_name'],
+            ['owner_phone', 'captain_phone'],
+            ['owner_cccd', 'captain_cccd'],
             ['vessel_owner_gender', 'captain_gender'],
-            ['owner_birthday',      'captain_birthday'],
-            ['owner_fax',           'captain_fax'],
-            ['owner_address',       'captain_address'],
+            ['owner_birthday', 'captain_birthday'],
+            ['owner_fax', 'captain_fax'],
+            ['owner_address', 'captain_address'],
         ];
 
         function syncOwnerToCaptain() {
@@ -2384,7 +2556,7 @@
 
         // ── Toggle: Requester is Owner ───────────────────────────────────────────────
         const REQUESTER_OWNER_MAP = [
-            ['owner_name',  'requester_name'],
+            ['owner_name', 'requester_name'],
             ['owner_phone', 'requester_phone'],
         ];
 
@@ -2438,7 +2610,8 @@
         // ── Collect masterData from form ─────────────────────────────────────────────
         function getAutomationOptions() {
             return {
-                run_main_flow: document.getElementById('toggle_main_flow')?.checked !== false,
+                run_cskh: document.getElementById('toggle_cskh')?.checked !== false,
+                run_cauhinh: document.getElementById('toggle_cauhinh')?.checked !== false,
                 run_bccs: document.getElementById('toggle_bccs')?.checked !== false,
             };
         }
@@ -2448,7 +2621,8 @@
             if (!sub) return;
             const options = getAutomationOptions();
             const labels = [];
-            if (options.run_main_flow) labels.push('CSKH + Viettel');
+            if (options.run_cskh) labels.push('CSKH');
+            if (options.run_cauhinh) labels.push('Viettel');
             if (options.run_bccs) labels.push('BCCS');
             sub.textContent = labels.length
                 ? `Sẽ chạy: ${labels.join(', ')}`
@@ -2553,6 +2727,7 @@
                 // Owner info
                 owner_name: g('owner_name'),
                 owner_phone: g('owner_phone'),
+                owner_phone_2: g('owner_phone_2'),
                 owner_cccd: g('owner_cccd'),
                 issue_date: g('issue_date'),
                 issue_place: g('issue_place'),
@@ -2564,6 +2739,7 @@
                 owner_address_precinct: g('owner_address_precinct'),
                 owner_address_precinct_code: g('owner_address_precinct_code'),
                 owner_address_group_street: g('owner_address_group_street'),
+                owner_address_road: g('owner_address_road'),
                 owner_address_street: g('owner_address_street'),
                 owner_loai_ma_so: g('owner_loai_ma_so'),
                 vessel_owner_gender: g('vessel_owner_gender'),
@@ -2606,8 +2782,12 @@
             ['owner_phone', 'SĐT chủ tàu'],
             ['owner_cccd', 'CCCD chủ tàu'],
             ['owner_loai_ma_so', 'Loại mã số chủ tàu'],
+            ['issue_date', 'Ngày cấp CCCD'],
+            ['issue_place', 'Nơi cấp CCCD'],
+            ['vessel_owner_gender', 'Giới tính chủ tàu'],
             ['owner_fax', 'Số Fax chủ tàu'],
             ['owner_email', 'Email chủ tàu'],
+            ['owner_birthday', 'Ngày sinh chủ tàu'],
             ['owner_address_province', 'Tỉnh/TP chủ tàu'],
             ['owner_address_district', 'Quận/Huyện chủ tàu'],
             ['owner_address_precinct', 'Phường/Xã chủ tàu'],
@@ -2751,7 +2931,8 @@
             const barEl = document.getElementById('progress-bar');
 
             btn.disabled = loading;
-            document.getElementById('toggle_main_flow')?.toggleAttribute('disabled', loading);
+            document.getElementById('toggle_cskh')?.toggleAttribute('disabled', loading);
+            document.getElementById('toggle_cauhinh')?.toggleAttribute('disabled', loading);
             document.getElementById('toggle_bccs')?.toggleAttribute('disabled', loading);
 
             if (loading) {
@@ -2790,20 +2971,22 @@
             const allOk = activeResults.length > 0 && activeResults.every(item => item.success);
             const noneOk = activeResults.length === 0 || activeResults.every(item => !item.success);
             const partialOk = activeResults.some(item => item.success) && activeResults.some(item => !item.success);
+            const hasManualHandoff = activeResults.some(item => item.manual_handoff);
 
             // Header
-            header.className = 'result-header ' + (allOk ? 'success' : noneOk ? 'error' : 'partial');
-            document.getElementById('result-header-icon').textContent = allOk ? '✅' : noneOk ? '❌' : '⚠️';
+            header.className = 'result-header ' + (allOk && !hasManualHandoff ? 'success' : noneOk ? 'error' : 'partial');
+            document.getElementById('result-header-icon').textContent = allOk && !hasManualHandoff ? '✅' : noneOk ? '❌' : '⚠️';
             document.getElementById('result-header-text').textContent =
+                hasManualHandoff ? 'Một số bước cần người dùng hoàn tất thủ công trên SFive.' :
                 allOk ? 'Các luồng đã bật hoàn tất thành công!' :
-                partialOk ? 'Một số luồng thành công, một số luồng thất bại — kiểm tra chi tiết.' :
-                'Các luồng đã bật đều thất bại — kiểm tra log.';
+                    partialOk ? 'Một số luồng thành công, một số luồng thất bại — kiểm tra chi tiết.' :
+                        'Các luồng đã bật đều thất bại — kiểm tra log.';
 
             // Helper: điền 1 result-item
             function fillResultItem(prefix, obj) {
                 const skipped = Boolean(obj.skipped);
-                document.getElementById(prefix + '-badge').textContent  = skipped ? '⏭' : obj.success ? '✅' : '❌';
-                document.getElementById(prefix + '-badge').className     = skipped ? 'result-badge-skip' : 'result-badge-' + (obj.success ? 'ok' : 'err');
+                document.getElementById(prefix + '-badge').textContent = skipped ? '⏭' : obj.manual_handoff ? '⚠️' : obj.success ? '✅' : '❌';
+                document.getElementById(prefix + '-badge').className = skipped ? 'result-badge-skip' : 'result-badge-' + (obj.success ? 'ok' : 'err');
                 document.getElementById(prefix + '-message').textContent = obj.message || '';
                 document.getElementById(prefix + '-duration').textContent = obj.duration_ms
                     ? `⏱ ${(obj.duration_ms / 1000).toFixed(1)}s` : '';
@@ -2812,9 +2995,9 @@
                 else { errEl.style.display = 'none'; }
             }
 
-            fillResultItem('cskh',    data.results?.cskh    ?? {});
+            fillResultItem('cskh', data.results?.cskh ?? {});
             fillResultItem('cauhinh', data.results?.cauhinh ?? {});
-            fillResultItem('bccs',    data.results?.bccs    ?? { success: false, message: 'Không nhận được kết quả BCCS.' });
+            fillResultItem('bccs', data.results?.bccs ?? { success: false, message: 'Không nhận được kết quả BCCS.' });
 
             // Footer
             const totalSec = data.total_duration_ms ? (data.total_duration_ms / 1000).toFixed(1) : '?';
@@ -2863,7 +3046,7 @@
         async function runAutomation() {
             clearErrors();
             const masterData = collectMasterData();
-            if (!masterData.automation_options.run_main_flow && !masterData.automation_options.run_bccs) {
+            if (!masterData.automation_options.run_cskh && !masterData.automation_options.run_cauhinh && !masterData.automation_options.run_bccs) {
                 showValidationToast('Vui lòng bật ít nhất một luồng cần chạy.');
                 return;
             }
@@ -2930,8 +3113,8 @@
         // ── Autocomplete: Tên người yêu cầu ─────────────────────────────────────────
         // ── Mã tàu Autocomplete (server-side) ───────────────────────────────────────
         (function initShipCodeAutocomplete() {
-            const input   = document.getElementById('ship_code');
-            const bienSo  = document.getElementById('bien_so_tau');
+            const input = document.getElementById('ship_code');
+            const bienSo = document.getElementById('bien_so_tau');
 
             const list = document.createElement('ul');
             list.id = 'ship-code-autocomplete';
@@ -2942,8 +3125,8 @@
 
             function positionList() {
                 const rect = input.getBoundingClientRect();
-                list.style.top   = (rect.bottom + 2) + 'px';
-                list.style.left  = rect.left + 'px';
+                list.style.top = (rect.bottom + 2) + 'px';
+                list.style.left = rect.left + 'px';
                 list.style.width = rect.width + 'px';
             }
 
@@ -2963,7 +3146,7 @@
                     li.tabIndex = 0;
                     li.innerHTML = `<span class="autocomplete-item-name">${code}</span>`;
                     const select = () => {
-                        input.value  = code;
+                        input.value = code;
                         if (bienSo) bienSo.value = code;
                         closeList();
                         input.blur();
@@ -2972,8 +3155,8 @@
                     li.addEventListener('keydown', e => {
                         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); }
                         if (e.key === 'ArrowDown') { e.preventDefault(); (li.nextElementSibling ?? input).focus(); }
-                        if (e.key === 'ArrowUp')   { e.preventDefault(); (li.previousElementSibling ?? input).focus(); }
-                        if (e.key === 'Escape')    closeList();
+                        if (e.key === 'ArrowUp') { e.preventDefault(); (li.previousElementSibling ?? input).focus(); }
+                        if (e.key === 'Escape') closeList();
                     });
                     list.appendChild(li);
                 });
@@ -3027,8 +3210,8 @@
 
             function positionList() {
                 const rect = input.getBoundingClientRect();
-                list.style.top   = (rect.bottom + 2) + 'px';
-                list.style.left  = rect.left + 'px';
+                list.style.top = (rect.bottom + 2) + 'px';
+                list.style.left = rect.left + 'px';
                 list.style.width = rect.width + 'px';
             }
 
@@ -3052,8 +3235,8 @@
                     li.addEventListener('keydown', e => {
                         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); }
                         if (e.key === 'ArrowDown') { e.preventDefault(); (li.nextElementSibling ?? input).focus(); }
-                        if (e.key === 'ArrowUp')   { e.preventDefault(); (li.previousElementSibling ?? input).focus(); }
-                        if (e.key === 'Escape')    closeList();
+                        if (e.key === 'ArrowUp') { e.preventDefault(); (li.previousElementSibling ?? input).focus(); }
+                        if (e.key === 'Escape') closeList();
                     });
                     list.appendChild(li);
                 });
@@ -3686,11 +3869,26 @@
             document.getElementById('log-modal').classList.remove('open');
         }
 
+        function openHelpModal() {
+            document.getElementById('help-modal').classList.add('open');
+        }
+
+        function closeHelpModal(e) {
+            if (e.target === document.getElementById('help-modal')) closeHelpModalDirect();
+        }
+
+        function closeHelpModalDirect() {
+            document.getElementById('help-modal').classList.remove('open');
+        }
+
         // ── Init ─────────────────────────────────────────────────────────────────────
         document.addEventListener('DOMContentLoaded', () => {
             // ESC to close modal
             document.addEventListener('keydown', e => {
-                if (e.key === 'Escape') closeLogsModalDirect();
+                if (e.key === 'Escape') {
+                    closeLogsModalDirect();
+                    closeHelpModalDirect();
+                }
             });
 
             // ── Auth: kiểm tra localStorage lúc khởi động ────────────────────────
@@ -3725,8 +3923,8 @@
                 e.preventDefault();
                 const username = document.getElementById('login-username').value.trim();
                 const password = document.getElementById('login-password').value;
-                const errEl    = document.getElementById('login-error');
-                const btnEl    = document.getElementById('btn-login');
+                const errEl = document.getElementById('login-error');
+                const btnEl = document.getElementById('btn-login');
 
                 errEl.textContent = '';
                 btnEl.disabled = true;
@@ -3767,4 +3965,3 @@
 </body>
 
 </html>
-

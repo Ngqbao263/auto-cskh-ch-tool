@@ -12,18 +12,30 @@
 
 "use strict";
 
-require("dotenv").config(); // Load .env sớm nhất có thể
-
-const express = require("express");
 const path = require("path");
 const fs = require("fs");
+
+const isPkg = !!process.pkg;
+const APP_ROOT = isPkg ? path.dirname(process.execPath) : __dirname;
+
+function appPath(...parts) {
+  return path.join(APP_ROOT, ...parts);
+}
+
+function bundledPath(...parts) {
+  return path.join(__dirname, ...parts);
+}
+
+require("dotenv").config({ path: appPath(".env") }); // Load .env sớm nhất có thể
+
+const express = require("express");
 const multer = require("multer");
 const { chromium } = require("playwright");
 
 const { createClient } = require("@supabase/supabase-js");
 const { insertCSKH } = require("./automation/cskh-db-handler"); // DB insert
 const { runCauhinh } = require("./automation/cauhinh-handler"); // Playwright Viettel
-const { runBCCS }    = require("./automation/bccs-handler");    // Playwright BCCS
+const { runBCCS } = require("./automation/bccs-handler"); // Playwright BCCS
 
 // Supabase client dùng cho các API nhẹ (search, lookup) — không phải automation
 const _supabaseUrl = (process.env.SUPABASE_URL || "")
@@ -42,13 +54,15 @@ const supabase =
 // ─────────────────────────────────────────────────────────────────────────────
 const CONFIG = {
   port: 3000,
-  headless: true, // false = thấy browser (dễ debug); true = chạy ẩn
+  headless: false, // false = thấy browser (dễ debug); true = chạy ẩn
   slowMo: 60, // ms delay giữa các action Playwright
   run_mode: "parallel", // 'parallel' | 'sequential'
-  logs_dir: path.resolve(__dirname, "logs/runs"),
-  errors_dir: path.resolve(__dirname, "logs/errors"),
+  logs_dir: appPath("logs", "runs"),
+  errors_dir: appPath("logs", "errors"),
   request_timeout: 180_000, // 3 phút timeout cho toàn bộ automation
-  address_api_base_url: (process.env.ADDRESS_API_BASE_URL || "https://provinces.open-api.vn/api/v1").replace(/\/$/, ""),
+  address_api_base_url: (
+    process.env.ADDRESS_API_BASE_URL || "https://provinces.open-api.vn/api/v1"
+  ).replace(/\/$/, ""),
 
   // ── TEST MODE (độc lập từng hệ thống) ────────────────────────────────────
   // cskh:    false → Ghi thật vào Supabase DB
@@ -58,9 +72,9 @@ const CONFIG = {
   //                  Browser luôn hiện khi cauhinh test_mode = true
   // ──────────────────────────────────────────────────────────────────────────
   test_mode: {
-    cskh:    true,  // false = Chạy thật (Ghi vào Supabase)
-    cauhinh: true,  // true  = Chạy nháp (Không click Lưu Viettel)
-    bccs:    true,  // true  = Chạy nháp (Không click Lưu BCCS)
+    cskh: false, // false = Chạy thật (Ghi vào Supabase)
+    cauhinh: false, // true  = Chạy nháp (Không click Lưu Viettel)
+    bccs: false, // true  = Chạy nháp (Không click Lưu BCCS)
   },
 };
 
@@ -69,19 +83,19 @@ const CONFIG = {
 // ─────────────────────────────────────────────────────────────────────────────
 const app = express();
 app.use(express.json({ limit: "2mb" }));
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(bundledPath("public")));
 
-const UPLOADS_DIR = path.resolve(__dirname, "logs/uploads");
-const ADDRESS_CONVERT_DB_PATH = path.resolve(__dirname, "data/address-convert-map.json");
-fs.mkdirSync(CONFIG.logs_dir,   { recursive: true });
+const UPLOADS_DIR = appPath("logs", "uploads");
+const ADDRESS_CONVERT_DB_PATH = appPath("data", "address-convert-map.json");
+fs.mkdirSync(CONFIG.logs_dir, { recursive: true });
 fs.mkdirSync(CONFIG.errors_dir, { recursive: true });
-fs.mkdirSync(UPLOADS_DIR,       { recursive: true });
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 // ─── Multer — lưu file tạm vào logs/uploads/ ────────────────────────────────
 const _multerStorage = multer.diskStorage({
   destination: UPLOADS_DIR,
   filename: (_req, file, cb) => {
-    const ts   = Date.now();
+    const ts = Date.now();
     const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
     cb(null, `${ts}_${file.fieldname}_${safe}`);
   },
@@ -92,11 +106,11 @@ const upload = multer({
 });
 
 const UPLOAD_FIELDS = [
-  { name: "file_bbnt",       maxCount: 1 },
-  { name: "file_cmnd_sau",   maxCount: 1 },
+  { name: "file_bbnt", maxCount: 1 },
+  { name: "file_cmnd_sau", maxCount: 1 },
   { name: "file_cmnd_truoc", maxCount: 1 },
-  { name: "file_hop_dong",   maxCount: 1 },
-  { name: "file_phu_luc",    maxCount: 1 },
+  { name: "file_hop_dong", maxCount: 1 },
+  { name: "file_phu_luc", maxCount: 1 },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -178,11 +192,14 @@ function formatSettledResult(settledResult, label) {
       success: true,
       duration_ms: val.duration_ms ?? null,
       test_mode: isTest,
+      manual_handoff: val.manual_handoff ?? false,
       inserted_id: val.inserted_id ?? undefined,
       payment_id: val.payment_id ?? undefined,
-      message: isTest
-        ? `${label} hoàn tất (TEST MODE — chưa lưu DB thật).`
-        : `${label} hoàn tất thành công.${extra}`,
+      message:
+        val.message ||
+        (isTest
+          ? `${label} hoàn tất (TEST MODE — chưa lưu DB thật).`
+          : `${label} hoàn tất thành công.${extra}`),
     };
   }
   return {
@@ -307,263 +324,366 @@ app.get("/api/search-serial", async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // API: POST /api/run-automation
 // ─────────────────────────────────────────────────────────────────────────────
-app.post("/api/run-automation", upload.fields(UPLOAD_FIELDS), async (req, res) => {
-  console.log(
-    `\n>>> [API] POST /api/run-automation nhận được — ${new Date().toLocaleTimeString(
-      "vi-VN"
-    )}`
-  );
-  const startTime = Date.now();
+app.post(
+  "/api/run-automation",
+  upload.fields(UPLOAD_FIELDS),
+  async (req, res) => {
+    console.log(
+      `\n>>> [API] POST /api/run-automation nhận được — ${new Date().toLocaleTimeString(
+        "vi-VN"
+      )}`
+    );
+    const startTime = Date.now();
 
-  // masterData gửi lên dưới dạng JSON string trong multipart field "masterData"
-  let masterData;
-  try {
-    masterData = JSON.parse(req.body?.masterData || "{}");
-  } catch {
-    return res.status(400).json({
-      success: false,
-      error: "Không thể parse masterData — phải là JSON string trong FormData.",
-    });
-  }
-
-  if (!masterData || typeof masterData !== "object") {
-    return res.status(400).json({
-      success: false,
-      error: 'Request body phải có field "masterData" chứa JSON.',
-    });
-  }
-
-  // Gắn đường dẫn file temp vào masterData để bccs-handler dùng
-  UPLOAD_FIELDS.forEach(({ name }) => {
-    masterData[name] = req.files?.[name]?.[0]?.path ?? null;
-  });
-
-  const _uploadedPaths = UPLOAD_FIELDS.map(({ name }) => masterData[name]).filter(Boolean);
-  if (_uploadedPaths.length > 0) {
-    console.log(`  📎 File đính kèm: ${_uploadedPaths.map((p) => path.basename(p)).join(", ")}`);
-  }
-
-  const missingFields = validateMasterData(masterData);
-  if (missingFields.length > 0) {
-    _uploadedPaths.forEach((p) => {
-      try { fs.unlinkSync(p); } catch { /* bỏ qua */ }
-    });
-    return res.status(400).json({
-      success: false,
-      error: `Thiếu các trường bắt buộc: ${missingFields.join(", ")}`,
-      missing: missingFields,
-    });
-  }
-
-  console.log("\n" + "═".repeat(60));
-  console.log(`📨 [API] Nhận request — ${new Date().toLocaleString("vi-VN")}`);
-  console.log(
-    `   Tàu: ${masterData.ship_code} | Serial: ${masterData.serial_number}`
-  );
-  console.log(
-    `   Chủ tàu: ${masterData.owner_name} | Chế độ: ${CONFIG.run_mode}`
-  );
-
-  // ── Trích test mode từng hệ thống ────────────────────────────────────────
-  const testModeCskh    = CONFIG.test_mode.cskh;
-  const testModeCauhinh = CONFIG.test_mode.cauhinh;
-  const testModeBccs    = CONFIG.test_mode.bccs;
-  const automationOptions = masterData.automation_options || {};
-  const runMainFlow = automationOptions.run_main_flow !== false;
-  const runBccs = automationOptions.run_bccs !== false;
-
-  if (!runMainFlow && !runBccs) {
-    _uploadedPaths.forEach((p) => {
-      try { fs.unlinkSync(p); } catch { /* bỏ qua */ }
-    });
-    return res.status(400).json({
-      success: false,
-      error: "Vui lòng bật ít nhất một luồng cần chạy.",
-      results: {
-        cskh: formatSkippedResult("CSKH"),
-        cauhinh: formatSkippedResult("Cấu hình Viettel"),
-        bccs: formatSkippedResult("BCCS"),
-      },
-    });
-  }
-
-  // ── Log trạng thái test mode ──────────────────────────────────────────────
-  console.log(
-    `   CSKH:     ${
-      testModeCskh
-        ? "🧪 TEST (dry-run, không insert DB)"
-        : "🟢 THẬT (ghi vào Supabase)"
-    }`
-  );
-  console.log(
-    `   Cấu hình: ${
-      testModeCauhinh
-        ? "🧪 TEST (không click Lưu Viettel)"
-        : "🟢 THẬT (lưu vào Viettel DB)"
-    }`
-  );
-  console.log(
-    `   BCCS:     ${
-      testModeBccs
-        ? "🧪 TEST (không click Lưu BCCS)"
-        : "🟢 THẬT (lưu vào BCCS)"
-    }`
-  );
-  console.log(
-    `   Luồng bật: ${[
-      runMainFlow ? "CSKH + Viettel" : "",
-      runBccs ? "BCCS" : "",
-    ].filter(Boolean).join(", ")}`
-  );
-  console.log("═".repeat(60));
-
-  let browser;
-  let results = {
-    cskh: runMainFlow ? null : formatSkippedResult("CSKH"),
-    cauhinh: runMainFlow ? null : formatSkippedResult("Cấu hình Viettel"),
-    bccs: runBccs ? null : formatSkippedResult("BCCS"),
-  };
-
-  try {
-    let pageCauhinh = null;
-    let cauhinhInitError = null;
-
-    if (runMainFlow) {
-      const effectiveHeadless = testModeCauhinh ? false : CONFIG.headless;
-      try {
-        browser = await chromium.launch({
-          headless: effectiveHeadless,
-          slowMo: CONFIG.slowMo,
-          args: ["--no-sandbox", "--disable-setuid-sandbox"],
-        });
-        console.log(
-          `\n🌐 Browser khởi động (headless=${effectiveHeadless}) — dùng cho Viettel`
-        );
-
-        const context = await browser.newContext({
-          viewport: { width: 1440, height: 900 },
-          locale: "vi-VN",
-          timezoneId: "Asia/Ho_Chi_Minh",
-          ignoreHTTPSErrors: true,
-        });
-        context.setDefaultTimeout(30_000);
-        pageCauhinh = await context.newPage();
-        console.log(`\n📑 Đã tạo tab Playwright cho Viettel.`);
-      } catch (err) {
-        cauhinhInitError = err;
-        results.cauhinh = {
-          success: false,
-          error: `Không thể khởi động browser Viettel: ${err.message}`,
-          message: "Cấu hình thất bại.",
-        };
-        console.error("❌ Không thể khởi động Playwright cho Viettel:", err.message);
-      }
-    } else {
-      console.log(`\n⏭️  Bỏ qua CSKH + Viettel theo lựa chọn người dùng.`);
+    // masterData gửi lên dưới dạng JSON string trong multipart field "masterData"
+    let masterData;
+    try {
+      masterData = JSON.parse(req.body?.masterData || "{}");
+    } catch {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Không thể parse masterData — phải là JSON string trong FormData.",
+      });
     }
 
-    if (CONFIG.run_mode === "parallel") {
-      const tasks = [];
-      if (runMainFlow) {
-        tasks.push({ key: "cskh", label: "CSKH", fn: () => insertCSKH(masterData, testModeCskh) });
-        if (!cauhinhInitError && pageCauhinh) {
-          tasks.push({ key: "cauhinh", label: "Cấu hình", fn: () => runCauhinh(pageCauhinh, masterData, testModeCauhinh) });
-        }
-      }
-      if (runBccs) {
-        tasks.push({ key: "bccs", label: "BCCS", fn: () => runBCCS(masterData, testModeBccs) });
-      }
-
-      console.log(`\n⚡ Chế độ SONG SONG: chạy ${tasks.map((t) => t.label).join(" + ")}\n`);
-      const settled = await Promise.allSettled(tasks.map((task) => task.fn()));
-      settled.forEach((settledResult, index) => {
-        const task = tasks[index];
-        results[task.key] = formatSettledResult(settledResult, task.label);
+    if (!masterData || typeof masterData !== "object") {
+      return res.status(400).json({
+        success: false,
+        error: 'Request body phải có field "masterData" chứa JSON.',
       });
-    } else {
-      console.log(`\n🔁 Chế độ TUẦN TỰ theo các luồng đã bật\n`);
-      if (runMainFlow) {
-        const [cskhSettled] = await Promise.allSettled([
-          insertCSKH(masterData, testModeCskh),
-        ]);
-        results.cskh = formatSettledResult(cskhSettled, "CSKH");
+    }
 
-        if (!cauhinhInitError && pageCauhinh) {
+    // Gắn đường dẫn file temp vào masterData để bccs-handler dùng
+    UPLOAD_FIELDS.forEach(({ name }) => {
+      masterData[name] = req.files?.[name]?.[0]?.path ?? null;
+    });
+
+    const _uploadedPaths = UPLOAD_FIELDS.map(
+      ({ name }) => masterData[name]
+    ).filter(Boolean);
+    if (_uploadedPaths.length > 0) {
+      console.log(
+        `  📎 File đính kèm: ${_uploadedPaths
+          .map((p) => path.basename(p))
+          .join(", ")}`
+      );
+    }
+
+    const missingFields = validateMasterData(masterData);
+    if (missingFields.length > 0) {
+      _uploadedPaths.forEach((p) => {
+        try {
+          fs.unlinkSync(p);
+        } catch {
+          /* bỏ qua */
+        }
+      });
+      return res.status(400).json({
+        success: false,
+        error: `Thiếu các trường bắt buộc: ${missingFields.join(", ")}`,
+        missing: missingFields,
+      });
+    }
+
+    console.log("\n" + "═".repeat(60));
+    console.log(
+      `📨 [API] Nhận request — ${new Date().toLocaleString("vi-VN")}`
+    );
+    console.log(
+      `   Tàu: ${masterData.ship_code} | Serial: ${masterData.serial_number}`
+    );
+    console.log(
+      `   Chủ tàu: ${masterData.owner_name} | Chế độ: ${CONFIG.run_mode}`
+    );
+
+    // ── Trích test mode từng hệ thống ────────────────────────────────────────
+    const testModeCskh = CONFIG.test_mode.cskh;
+    const testModeCauhinh = CONFIG.test_mode.cauhinh;
+    const testModeBccs = CONFIG.test_mode.bccs;
+    const automationOptions = masterData.automation_options || {};
+    const runCskh =
+      automationOptions.run_cskh !== undefined
+        ? automationOptions.run_cskh !== false
+        : automationOptions.run_main_flow !== false;
+    const runViettel =
+      automationOptions.run_cauhinh !== undefined
+        ? automationOptions.run_cauhinh !== false
+        : automationOptions.run_main_flow !== false;
+    const runBccs = automationOptions.run_bccs !== false;
+
+    if (!runCskh && !runViettel && !runBccs) {
+      _uploadedPaths.forEach((p) => {
+        try {
+          fs.unlinkSync(p);
+        } catch {
+          /* bỏ qua */
+        }
+      });
+      return res.status(400).json({
+        success: false,
+        error: "Vui lòng bật ít nhất một luồng cần chạy.",
+        results: {
+          cskh: formatSkippedResult("CSKH"),
+          cauhinh: formatSkippedResult("Cấu hình Viettel"),
+          bccs: formatSkippedResult("BCCS"),
+        },
+      });
+    }
+
+    // ── Log trạng thái test mode ──────────────────────────────────────────────
+    console.log(
+      `   CSKH:     ${
+        testModeCskh
+          ? "🧪 TEST (dry-run, không insert DB)"
+          : "🟢 THẬT (ghi vào Supabase)"
+      }`
+    );
+    console.log(
+      `   Cấu hình: ${
+        testModeCauhinh
+          ? "🧪 TEST (không click Lưu Viettel)"
+          : "🟢 THẬT (lưu vào Viettel DB)"
+      }`
+    );
+    console.log(
+      `   BCCS:     ${
+        testModeBccs
+          ? "🧪 TEST (không click Lưu BCCS)"
+          : "🟢 THẬT (lưu vào BCCS)"
+      }`
+    );
+    console.log(
+      `   Luồng bật: ${[
+        runCskh ? "CSKH" : "",
+        runViettel ? "Viettel" : "",
+        runBccs ? "BCCS" : "",
+      ]
+        .filter(Boolean)
+        .join(", ")}`
+    );
+    console.log("═".repeat(60));
+
+    let browser;
+    let results = {
+      cskh: runCskh ? null : formatSkippedResult("CSKH"),
+      cauhinh: runViettel ? null : formatSkippedResult("Cấu hình Viettel"),
+      bccs: runBccs ? null : formatSkippedResult("BCCS"),
+    };
+
+    try {
+      let pageCauhinh = null;
+      let cauhinhInitError = null;
+
+      if (runViettel) {
+        const effectiveHeadless = testModeCauhinh ? false : CONFIG.headless;
+        try {
+          browser = await chromium.launch({
+            headless: effectiveHeadless,
+            slowMo: CONFIG.slowMo,
+            args: ["--no-sandbox", "--disable-setuid-sandbox"],
+          });
+          console.log(
+            `\n🌐 Browser khởi động (headless=${effectiveHeadless}) — dùng cho Viettel`
+          );
+
+          const context = await browser.newContext({
+            viewport: { width: 1440, height: 900 },
+            locale: "vi-VN",
+            timezoneId: "Asia/Ho_Chi_Minh",
+            ignoreHTTPSErrors: true,
+          });
+          context.setDefaultTimeout(30_000);
+          pageCauhinh = await context.newPage();
+          console.log(`\n📑 Đã tạo tab Playwright cho Viettel.`);
+        } catch (err) {
+          cauhinhInitError = err;
+          results.cauhinh = {
+            success: false,
+            error: `Không thể khởi động browser Viettel: ${err.message}`,
+            message: "Cấu hình thất bại.",
+          };
+          console.error(
+            "❌ Không thể khởi động Playwright cho Viettel:",
+            err.message
+          );
+        }
+      } else {
+        console.log(`\n⏭️  Bỏ qua Viettel theo lựa chọn người dùng.`);
+      }
+
+      if (CONFIG.run_mode === "parallel") {
+        const tasks = [];
+        if (runCskh) {
+          tasks.push({
+            key: "cskh",
+            label: "CSKH",
+            fn: () => insertCSKH(masterData, testModeCskh),
+          });
+        }
+        if (runViettel) {
+          if (!cauhinhInitError && pageCauhinh) {
+            tasks.push({
+              key: "cauhinh",
+              label: "Cấu hình",
+              fn: () => runCauhinh(pageCauhinh, masterData, testModeCauhinh),
+            });
+          }
+        }
+        if (runBccs) {
+          tasks.push({
+            key: "bccs",
+            label: "BCCS",
+            fn: () => runBCCS(masterData, testModeBccs),
+          });
+        }
+
+        console.log(
+          `\n⚡ Chế độ SONG SONG: chạy ${tasks
+            .map((t) => t.label)
+            .join(" + ")}\n`
+        );
+        const settled = await Promise.allSettled(
+          tasks.map((task) => task.fn())
+        );
+        settled.forEach((settledResult, index) => {
+          const task = tasks[index];
+          results[task.key] = formatSettledResult(settledResult, task.label);
+        });
+      } else {
+        console.log(`\n🔁 Chế độ TUẦN TỰ theo các luồng đã bật\n`);
+        if (runCskh) {
+          const [cskhSettled] = await Promise.allSettled([
+            insertCSKH(masterData, testModeCskh),
+          ]);
+          results.cskh = formatSettledResult(cskhSettled, "CSKH");
+        }
+
+        if (runViettel && !cauhinhInitError && pageCauhinh) {
           const [cauhinhSettled] = await Promise.allSettled([
             runCauhinh(pageCauhinh, masterData, testModeCauhinh),
           ]);
           results.cauhinh = formatSettledResult(cauhinhSettled, "Cấu hình");
         }
+        if (runBccs) {
+          const [bccsSettled] = await Promise.allSettled([
+            runBCCS(masterData, testModeBccs),
+          ]);
+          results.bccs = formatSettledResult(bccsSettled, "BCCS");
+        }
       }
-      if (runBccs) {
-        const [bccsSettled] = await Promise.allSettled([
-          runBCCS(masterData, testModeBccs),
-        ]);
-        results.bccs = formatSettledResult(bccsSettled, "BCCS");
+    } catch (err) {
+      console.error("❌ Lỗi không mong muốn:", err.message);
+      results = {
+        cskh: runCskh
+          ? {
+              success: false,
+              error: "Lỗi hệ thống: " + err.message,
+              message: "CSKH thất bại.",
+            }
+          : formatSkippedResult("CSKH"),
+        cauhinh: runViettel
+          ? {
+              success: false,
+              error: "Lỗi hệ thống: " + err.message,
+              message: "Cấu hình thất bại.",
+            }
+          : formatSkippedResult("Cấu hình Viettel"),
+        bccs: runBccs
+          ? {
+              success: false,
+              error: "Lỗi hệ thống: " + err.message,
+              message: "BCCS thất bại.",
+            }
+          : formatSkippedResult("BCCS"),
+      };
+    } finally {
+      if (browser) {
+        await browser.close();
+        console.log("\n🔒 Browser đã đóng.");
+      }
+      // Xoá file upload tạm sau khi automation xong
+      _uploadedPaths.forEach((p) => {
+        try {
+          fs.unlinkSync(p);
+        } catch {
+          /* bỏ qua */
+        }
+      });
+      if (_uploadedPaths.length > 0) {
+        console.log(`  🗑️  Đã xoá ${_uploadedPaths.length} file tạm.`);
       }
     }
-  } catch (err) {
-    console.error("❌ Lỗi không mong muốn:", err.message);
-    results = {
-      cskh:    runMainFlow ? { success: false, error: "Lỗi hệ thống: " + err.message, message: "CSKH thất bại." } : formatSkippedResult("CSKH"),
-      cauhinh: runMainFlow ? { success: false, error: "Lỗi hệ thống: " + err.message, message: "Cấu hình thất bại." } : formatSkippedResult("Cấu hình Viettel"),
-      bccs:    runBccs ? { success: false, error: "Lỗi hệ thống: " + err.message, message: "BCCS thất bại." } : formatSkippedResult("BCCS"),
-    };
-  } finally {
-    if (browser) {
-      await browser.close();
-      console.log("\n🔒 Browser đã đóng.");
-    }
-    // Xoá file upload tạm sau khi automation xong
-    _uploadedPaths.forEach((p) => {
-      try { fs.unlinkSync(p); } catch { /* bỏ qua */ }
+
+    const totalDuration = Date.now() - startTime;
+    const activeResults = Object.values(results).filter(
+      (item) => item && !item.skipped
+    );
+    const overallSuccess =
+      activeResults.length > 0 && activeResults.every((item) => item.success);
+    const partialSuccess =
+      activeResults.some((item) => item.success) &&
+      activeResults.some((item) => !item.success);
+    const logFile = saveRunLog(masterData, results, totalDuration);
+
+    console.log("\n" + "═".repeat(60));
+    const testSuffix = [
+      testModeCskh ? "CSKH🧪" : "",
+      testModeCauhinh ? "Viettel🧪" : "",
+      testModeBccs ? "BCCS🧪" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    console.log(
+      `${overallSuccess ? "✅" : "⚠️ "} [API] Kết thúc — ${(
+        totalDuration / 1000
+      ).toFixed(1)}s${testSuffix ? `  [TEST: ${testSuffix}]` : ""}`
+    );
+    console.log(
+      `   CSKH:     ${
+        results.cskh.skipped
+          ? "⏭️ SKIP"
+          : results.cskh.success
+          ? "✅ OK"
+          : "❌ " + results.cskh.error
+      }`
+    );
+    console.log(
+      `   Cấu hình: ${
+        results.cauhinh.skipped
+          ? "⏭️ SKIP"
+          : results.cauhinh.success
+          ? "✅ OK"
+          : "❌ " + results.cauhinh.error
+      }`
+    );
+    console.log(
+      `   BCCS:     ${
+        results.bccs.skipped
+          ? "⏭️ SKIP"
+          : results.bccs.success
+          ? "✅ OK"
+          : "❌ " + results.bccs.error
+      }`
+    );
+    if (logFile) console.log(`   Log: logs/runs/${logFile}`);
+    console.log("═".repeat(60) + "\n");
+
+    res.json({
+      success: overallSuccess,
+      partial_success: partialSuccess,
+      test_mode: CONFIG.test_mode, // { cskh: bool, cauhinh: bool }
+      automation_options: {
+        run_cskh: runCskh,
+        run_cauhinh: runViettel,
+        run_bccs: runBccs,
+      },
+      results,
+      total_duration_ms: totalDuration,
+      log_file: logFile,
     });
-    if (_uploadedPaths.length > 0) {
-      console.log(`  🗑️  Đã xoá ${_uploadedPaths.length} file tạm.`);
-    }
   }
-
-  const totalDuration = Date.now() - startTime;
-  const activeResults = Object.values(results).filter((item) => item && !item.skipped);
-  const overallSuccess = activeResults.length > 0 && activeResults.every((item) => item.success);
-  const partialSuccess = activeResults.some((item) => item.success) && activeResults.some((item) => !item.success);
-  const logFile = saveRunLog(masterData, results, totalDuration);
-
-  console.log("\n" + "═".repeat(60));
-  const testSuffix = [
-    testModeCskh    ? "CSKH🧪"   : "",
-    testModeCauhinh ? "Viettel🧪" : "",
-    testModeBccs    ? "BCCS🧪"   : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  console.log(
-    `${overallSuccess ? "✅" : "⚠️ "} [API] Kết thúc — ${(
-      totalDuration / 1000
-    ).toFixed(1)}s${testSuffix ? `  [TEST: ${testSuffix}]` : ""}`
-  );
-  console.log(
-    `   CSKH:     ${results.cskh.skipped ? "⏭️ SKIP" : results.cskh.success ? "✅ OK" : "❌ " + results.cskh.error}`
-  );
-  console.log(
-    `   Cấu hình: ${results.cauhinh.skipped ? "⏭️ SKIP" : results.cauhinh.success ? "✅ OK" : "❌ " + results.cauhinh.error}`
-  );
-  console.log(
-    `   BCCS:     ${results.bccs.skipped ? "⏭️ SKIP" : results.bccs.success ? "✅ OK" : "❌ " + results.bccs.error}`
-  );
-  if (logFile) console.log(`   Log: logs/runs/${logFile}`);
-  console.log("═".repeat(60) + "\n");
-
-  res.json({
-    success: overallSuccess,
-    partial_success: partialSuccess,
-    test_mode: CONFIG.test_mode, // { cskh: bool, cauhinh: bool }
-    automation_options: { run_main_flow: runMainFlow, run_bccs: runBccs },
-    results,
-    total_duration_ms: totalDuration,
-    log_file: logFile,
-  });
-});
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API: GET /api/logs
@@ -656,14 +776,18 @@ let addressConvertDb = null;
 function loadAddressConvertDb() {
   if (addressConvertDb) return addressConvertDb;
   if (!fs.existsSync(ADDRESS_CONVERT_DB_PATH)) {
-    throw new Error(`Missing local address convert DB: ${ADDRESS_CONVERT_DB_PATH}`);
+    throw new Error(
+      `Missing local address convert DB: ${ADDRESS_CONVERT_DB_PATH}`
+    );
   }
 
   const payload = JSON.parse(fs.readFileSync(ADDRESS_CONVERT_DB_PATH, "utf8"));
   const records = Array.isArray(payload.records) ? payload.records : [];
   const byKey = new Map();
   for (const record of records) {
-    const key = record.key || addressLookupKey(record.oldProvince, record.oldDistrict, record.oldWard);
+    const key =
+      record.key ||
+      addressLookupKey(record.oldProvince, record.oldDistrict, record.oldWard);
     if (!byKey.has(key)) byKey.set(key, []);
     byKey.get(key).push(record);
   }
@@ -717,7 +841,8 @@ function convertAddressLocal({ address, province, district, ward }) {
   if (!oldProvince || !oldDistrict || !oldWard) {
     return {
       success: false,
-      error: "Missing province, district, or ward for local address conversion.",
+      error:
+        "Missing province, district, or ward for local address conversion.",
     };
   }
 
@@ -747,7 +872,9 @@ function convertAddressLocal({ address, province, district, ward }) {
   }
 
   const target = targets[0];
-  const converted = normalizeConvertedAddressText([target.newWard, target.newProvince].join(", "));
+  const converted = normalizeConvertedAddressText(
+    [target.newWard, target.newProvince].join(", ")
+  );
   return {
     success: true,
     converted,
@@ -776,7 +903,10 @@ app.get("/api/address/districts", async (req, res) => {
     if (q) {
       data = await fetchAddressApi("/d/search/", { q, p: provinceCode });
     } else if (provinceCode) {
-      const province = await fetchAddressApi(`/p/${encodeURIComponent(provinceCode)}`, { depth: 2 });
+      const province = await fetchAddressApi(
+        `/p/${encodeURIComponent(provinceCode)}`,
+        { depth: 2 }
+      );
       data = province?.districts || [];
     } else {
       data = await fetchAddressApi("/d/");
@@ -794,9 +924,16 @@ app.get("/api/address/wards", async (req, res) => {
     const provinceCode = req.query.provinceCode || req.query.p;
     let data;
     if (q) {
-      data = await fetchAddressApi("/w/search/", { q, d: districtCode, p: provinceCode });
+      data = await fetchAddressApi("/w/search/", {
+        q,
+        d: districtCode,
+        p: provinceCode,
+      });
     } else if (districtCode) {
-      const district = await fetchAddressApi(`/d/${encodeURIComponent(districtCode)}`, { depth: 2 });
+      const district = await fetchAddressApi(
+        `/d/${encodeURIComponent(districtCode)}`,
+        { depth: 2 }
+      );
       data = district?.wards || [];
     } else {
       data = await fetchAddressApi("/w/");
@@ -875,7 +1012,7 @@ app.get("/api/config", (_req, res) => {
 // FALLBACK SPA
 // ─────────────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(bundledPath("public", "index.html"));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -889,8 +1026,8 @@ const server = app.listen(CONFIG.port, () => {
 ║  🌐  http://localhost:${CONFIG.port}                   ║
 ║  🤖  Chế độ:  ${
     CONFIG.run_mode === "parallel"
-      ? "Song song (CSKH + Cấu hình)  "
-      : "Tuần tự (CSKH → Cấu hình)  "
+      ? "Song song (3 luồng độc lập) "
+      : "Tuần tự (CSKH → Viettel → BCCS)"
   }  ║
 ║  👁️   Browser: ${
     CONFIG.headless && !CONFIG.test_mode.cauhinh
@@ -930,4 +1067,3 @@ ${
   // (lớn hơn request_timeout automation 3 phút để server luôn kịp gửi response)
   server.setTimeout(5 * 60 * 1000);
 });
-

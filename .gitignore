@@ -1,5 +1,6 @@
 # Bỏ qua thư viện nặng
 node_modules/
+dist/
 
 # Bỏ qua file chứa pass/cấu hình cá nhân
 .env

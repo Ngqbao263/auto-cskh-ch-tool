@@ -51,7 +51,8 @@ const BCCS_PASSWORD   = process.env.BCCS_PASSWORD   || "PLACEHOLDER_PASSWORD";
 const BCCS_SFIVE_PATH = process.env.BCCS_SFIVE_PATH ||
   "C:\\Program Files (x86)\\Viettel\\SFive\\Application\\sfive.exe";
 const CDP_PORT        = 9222;
-const SCREENSHOT_DIR  = path.resolve(__dirname, "../logs/errors");
+const RUNTIME_ROOT    = process.pkg ? path.dirname(process.execPath) : path.resolve(__dirname, "..");
+const SCREENSHOT_DIR  = path.join(RUNTIME_ROOT, "logs", "errors");
 
 // â”€â”€â”€ Timing (ms) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const T = {
@@ -125,6 +126,7 @@ const SEL_BILL_CYCLE    = '[id="connectForm:j_idt1904:svAccountInfo:cbxViewBillC
 const SEL_PAY_METHOD    = '[id="connectForm:j_idt1904:svAccountInfo:cbxViewPayMethod_input"]';
 const SEL_NOTICE_CHARGE = '[id="connectForm:j_idt1904:svAccountInfo:cbxViewNoticeCharge_input"]';
 const SEL_PHONE         = '[id="connectForm:j_idt1904:svAccountInfo:txtTelPhone"]';
+const SEL_PHONE_2       = 'input[title="Số điện thoại thứ 2"], input[data-p-label="Số điện thoại thứ 2"], input[id$=":txtAddInfo"]';
 
 // Address popup configs â€” kept separate so we can wire them into the main BCCS
 // flow only after the address data model is finalized.
@@ -175,6 +177,7 @@ const DOCUMENT_SLOTS = [
 ];
 
 // â”€â”€â”€ Selectors â€” Captcha & Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const SEL_CAPTCHA_INPUT  = '[id="connectForm:capcha:capcha1"], input[data-p-label="Mã xác nhận"], input.acapchapinputCaptcha';
 const SEL_CAPTCHA_RELOAD = '[id="connectForm:capcha:j_idt5320"]';
 const SEL_BTN_DAU_NOI   = '[id="connectForm:buttonDoConnectId:j_idt5328"]';
 const SEL_BTN_DONG_Y    = '[id="connectForm:buttonDoConnectId:j_idt5363"]';
@@ -925,13 +928,14 @@ function splitStreetAndHouseNo(value) {
 
 function buildOwnerAddressForBccs(masterData, { useShipCodeAsStreet = false } = {}) {
   const streetParts = splitStreetAndHouseNo(masterData.owner_address_street);
+  const billingStreet = String(masterData.owner_address_road || "").trim() || masterData.ship_code;
   const address = {
     province: masterData.owner_address_province,
     district: masterData.owner_address_district,
     precinct: masterData.owner_address_precinct,
     groupStreet: masterData.owner_address_group_street,
     street: useShipCodeAsStreet
-      ? masterData.ship_code
+      ? billingStreet
       : streetParts.street,
     noApartment: useShipCodeAsStreet ? "" : streetParts.noApartment,
   };
@@ -1035,14 +1039,14 @@ async function connectCDP() {
 
 async function dismissChromePopups(page) {
   console.log(`  [BCCS] Don popup Chrome/SFive neu co...`);
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 8; i++) {
     try {
       await pressKey(page, "Esc");
     } catch (err) {
       console.warn(`  [BCCS] Khong the bam Esc de don popup: ${err.message}`);
       return;
     }
-    await sleep(250);
+    await sleep(500);
   }
 }
 
@@ -1483,6 +1487,17 @@ async function fillPaymentSection(page, masterData) {
     } catch (err) { console.warn(`    âš ï¸  Äiá»‡n thoáº¡i â€” tháº¥t báº¡i: ${err.message}`); }
   }
 
+  if (masterData.owner_phone_2) {
+    console.log(`    â€¢ Số điện thoại thứ 2: ${masterData.owner_phone_2}`);
+    try {
+      await safeFill(page, SEL_PHONE_2, masterData.owner_phone_2);
+      await page.evaluate(`document.activeElement && document.activeElement.blur()`);
+      await sleep(200);
+    } catch (err) {
+      console.warn(`    ⚠️  Số điện thoại thứ 2 — thất bại: ${err.message}`);
+    }
+  }
+
   const billingAddress = buildOwnerAddressForBccs(masterData, { useShipCodeAsStreet: true });
   if (hasRequiredBccsAddress(billingAddress, { requireDistrict: true })) {
     try {
@@ -1535,11 +1550,26 @@ async function fillDocumentSection(page, masterData) {
 // CAPTCHA + SUBMIT
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-async function handleCaptcha(page) {
-  console.log(`\n  ðŸ” [BCCS] Captcha â€” Äiá»n xong thÃ¬ nháº¥n Enter trong terminal...`);
+async function handoffToUserAtCaptcha(page) {
+  console.log(`\n  🔐 [BCCS] Đã điền xong form. Chuyển quyền thao tác cho người dùng tại ô captcha...`);
   try { await safeClick(page, SEL_CAPTCHA_RELOAD, { wait: 800 }); } catch {}
-  await page.pause();
-  console.log(`  â–¶ï¸  Tiáº¿p tá»¥c sau khi Ä‘iá»n captcha.`);
+
+  const focused = await page.evaluate(`
+    (function(sel) {
+      const el = document.querySelector(sel);
+      if (!el) return false;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      el.focus();
+      el.click();
+      return true;
+    })(${JSON.stringify(SEL_CAPTCHA_INPUT)})
+  `).catch(() => false);
+
+  if (focused) {
+    console.log(`  ✅ [BCCS] Đã focus vào ô Mã xác nhận. Người dùng tự nhập captcha và bấm Đấu nối.`);
+  } else {
+    console.warn(`  ⚠️  [BCCS] Không tìm thấy ô Mã xác nhận để focus. Người dùng kiểm tra thủ công trên SFive.`);
+  }
 }
 
 async function submitForm(page) {
@@ -1582,6 +1612,7 @@ async function submitForm(page) {
 async function runBCCS(masterData, testMode = false) {
   const startTime = Date.now();
   let cdpClient;
+  let keepSFiveOpen = false;
 
   console.log("\n" + "â•".repeat(60));
   console.log(
@@ -1614,7 +1645,9 @@ async function runBCCS(masterData, testMode = false) {
       await page.goto(mockUrl);
     } else {
       await login(page);
+      await dismissChromePopups(page);
       await navigateToStracking(page);
+      await dismissChromePopups(page);
     }
 
     // â”€â”€ Äiá»n form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1625,18 +1658,19 @@ async function runBCCS(masterData, testMode = false) {
     await fillDocumentSection(page, masterData);
 
     // â”€â”€ Captcha + Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    if (testMode) {
-      console.log(`\n  ðŸ§ª [BCCS] TEST MODE â€” Nháº¥n Enter trong terminal Ä‘á»ƒ káº¿t thÃºc...`);
-      await page.pause();
-    } else {
-      await handleCaptcha(page);
-      await submitForm(page);
-    }
+    await handoffToUserAtCaptcha(page);
+    keepSFiveOpen = !IS_MOCK_TEST;
 
     const duration = Date.now() - startTime;
-    console.log(`\n  â±  [BCCS] HoÃ n thÃ nh trong ${(duration / 1000).toFixed(1)}s`);
+    console.log(`\n  ⏱  [BCCS] Đã điền xong form trong ${(duration / 1000).toFixed(1)}s — chờ người dùng hoàn tất thủ công.`);
     console.log("â•".repeat(60) + "\n");
-    return { success: true, duration_ms: duration, test_mode: testMode };
+    return {
+      success: true,
+      duration_ms: duration,
+      test_mode: testMode,
+      manual_handoff: true,
+      message: "BCCS đã điền xong. Vui lòng nhập captcha, bấm Đấu nối và kiểm tra kết quả trên SFive.",
+    };
 
   } catch (err) {
     console.error(`\n  âŒ [BCCS] Lá»—i: ${err.message}`);
@@ -1654,11 +1688,15 @@ async function runBCCS(masterData, testMode = false) {
     if (cdpClient) {
       try { await cdpClient.close(); } catch {}
     }
-    // ÄÃ³ng SFive sau khi xong
-    try {
-      execSync("taskkill /f /im sfive.exe", { stdio: "ignore" });
-      console.log(`  ðŸ”’ [BCCS] SFive Ä‘Ã£ Ä‘Ã³ng.`);
-    } catch {}
+    if (keepSFiveOpen) {
+      console.log(`  🔓 [BCCS] Giữ SFive mở để người dùng hoàn tất thủ công.`);
+    } else {
+      // ÄÃ³ng SFive sau khi xong
+      try {
+        execSync("taskkill /f /im sfive.exe", { stdio: "ignore" });
+        console.log(`  ðŸ”’ [BCCS] SFive Ä‘Ã£ Ä‘Ã³ng.`);
+      } catch {}
+    }
   }
 }
 
