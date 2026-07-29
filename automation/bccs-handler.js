@@ -36,6 +36,7 @@ require("dotenv").config();
 const path                    = require("path");
 const fs                      = require("fs");
 const { spawn, execSync }     = require("child_process");
+const captchaBridge           = require("./captcha-bridge"); // cầu nối captcha ↔ giao diện tool
 let CDP;
 
 // â”€â”€â”€ Mock Mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -118,52 +119,64 @@ const SEL_RADIO_3M  = '[id="connectForm:customRadio0:3_clone"]';
 // â”€â”€â”€ Selectors â€” ThÃ´ng tin thuÃª bao â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const SEL_SUB_TYPE    = '[id="connectForm:cbxProductOffering_input"]';
 const SEL_SERIAL      = '[id="connectForm:serialAssignedAgents"]';
-const SEL_RELOAD_ISDN = '[id="connectForm:j_idt1809"]';
+const SEL_RELOAD_ISDN = 'a[title="Sinh Account"], [id="connectForm:panelNumberSelection"] a.ui-commandlink';
 const SEL_BIEN_SO     = '[id="connectForm:isdnAccountplate"]';
 
+// --- Selectors --- Danh sach thiet bi kem theo (tblSubgoodsStracking) ---
+// Dung class on dinh thay cho id j_idt tu sinh cua PrimeFaces.
+const SEL_SUBGOODS_DEVICE   = '.subGoodsItem0 select';        // Thiet bi (select onemenu)
+const SEL_SUBGOODS_SUPPLY   = '.cbxListSupplyMethod0 select'; // Hinh thuc cung cap
+const SEL_SUBGOODS_SERIAL   = '[id$="tblSubgoodsStracking:0:serial"]'; // Serial (= .txtSerial0)
+const SUBGOODS_DEVICE_TEXT  = "S-Tracking V03"; // chon option chua chuoi nay
+const SUBGOODS_SUPPLY_TEXT  = "Bán đứt";
+
 // â”€â”€â”€ Selectors â€” ThÃ´ng tin thanh toÃ¡n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const SEL_BILL_CYCLE    = '[id="connectForm:j_idt1904:svAccountInfo:cbxViewBillCycle_input"]';
-const SEL_PAY_METHOD    = '[id="connectForm:j_idt1904:svAccountInfo:cbxViewPayMethod_input"]';
-const SEL_NOTICE_CHARGE = '[id="connectForm:j_idt1904:svAccountInfo:cbxViewNoticeCharge_input"]';
-const SEL_PHONE         = '[id="connectForm:j_idt1904:svAccountInfo:txtTelPhone"]';
+// Dùng khớp đuôi [id$="..."] để miễn nhiễm với j_idt#### tự sinh (đã đổi 1904→1906).
+const SEL_BILL_CYCLE    = '[id$="svAccountInfo:cbxViewBillCycle_input"]';
+const SEL_PAY_METHOD    = '[id$="svAccountInfo:cbxViewPayMethod_input"]';
+const SEL_NOTICE_CHARGE = '[id$="svAccountInfo:cbxViewNoticeCharge_input"]';
+const SEL_PRINT_METHOD  = '[id$="svAccountInfo:cbxViewPrintMethod_input"]';
+const SEL_PHONE         = '[id$="svAccountInfo:txtTelPhone"]';
 const SEL_PHONE_2       = 'input[title="Số điện thoại thứ 2"], input[data-p-label="Số điện thoại thứ 2"], input[id$=":txtAddInfo"]';
 
 // Address popup configs â€” kept separate so we can wire them into the main BCCS
 // flow only after the address data model is finalized.
+// Selector địa chỉ dùng KHỚP ĐUÔI [id$="..."] / [class*="..."] để miễn nhiễm với
+// phần j_idt#### tự sinh của PrimeFaces (đã đổi 1724→1726 trên trang thật).
 const ADDRESS_POPUPS = {
   install: {
     label: "Dia chi lap dat",
-    openInput: '[id="connectForm:j_idt1724:input_for_address_txtDeploymentAddressSip_txt2"]',
+    openInput: '[id$="input_for_address_txtDeploymentAddressSip_txt2"]',
     openFunction: "reload_txtDeploymentAddressSip_location",
-    province: '[id="connectForm:j_idt1724:txtDeploymentAddressSipprovince_input"]',
-    district: '[id="connectForm:j_idt1724:txtDeploymentAddressSipdistrict_input"]',
-    precinct: '[id="connectForm:j_idt1724:txtDeploymentAddressSipprecinct_input"]',
-    groupStreet: '[id="connectForm:j_idt1724:txtDeploymentAddressSipgroupStreet_input"]',
+    province: '[id$="txtDeploymentAddressSipprovince_input"]',
+    district: '[id$="txtDeploymentAddressSipdistrict_input"]',
+    precinct: '[id$="txtDeploymentAddressSipprecinct_input"]',
+    groupStreet: '[id$="txtDeploymentAddressSipgroupStreet_input"]',
     saveButton: ".txtDeploymentAddressSipbtnSumitLocation",
     dialog: ".atxtDeploymentAddressSipdlgLocation",
   },
   billing: {
     label: "Dia chi XM/TBC",
-    openInput: '[id="connectForm:j_idt1904:svAccountInfo:j_idt2749:input_for_address_j_idt1904txtAccAddressXmtt_txt2"]',
+    openInput: '[id$="txtAccAddressXmtt_txt2"]',
     openFunction: "reload_j_idt1904txtAccAddressXmtt_location",
-    province: '[id="connectForm:j_idt1904:svAccountInfo:j_idt2749:j_idt1904txtAccAddressXmttprovince_input"]',
-    district: '[id="connectForm:j_idt1904:svAccountInfo:j_idt2749:j_idt1904txtAccAddressXmttdistrict_input"]',
-    precinct: '[id="connectForm:j_idt1904:svAccountInfo:j_idt2749:j_idt1904txtAccAddressXmttprecinct_input"]',
-    groupStreet: '[id="connectForm:j_idt1904:svAccountInfo:j_idt2749:j_idt1904txtAccAddressXmttgroupStreet_input"]',
-    street: '[id="connectForm:j_idt1904:svAccountInfo:j_idt2749:j_idt1904txtAccAddressXmttstreetPro"]',
-    saveButton: ".j_idt1904txtAccAddressXmttbtnSumitLocation",
-    dialog: ".aj_idt1904txtAccAddressXmttdlgLocation",
+    province: '[id$="txtAccAddressXmttprovince_input"]',
+    district: '[id$="txtAccAddressXmttdistrict_input"]',
+    precinct: '[id$="txtAccAddressXmttprecinct_input"]',
+    groupStreet: '[id$="txtAccAddressXmttgroupStreet_input"]',
+    street: '[id$="txtAccAddressXmttstreetPro"]',
+    saveButton: '[class*="txtAccAddressXmttbtnSumitLocation"]',
+    dialog: '[class*="txtAccAddressXmttdlgLocation"]',
   },
   billingNew: {
     label: "Dia chi XM/TBC moi",
-    openInput: '[id="connectForm:j_idt1904:svAccountInfo:j_idt2835:input_for_address_j_idt1904txtAccAddressXmttNew_txt2"]',
+    openInput: '[id$="txtAccAddressXmttNew_txt2"]',
     openFunction: "reload_j_idt1904txtAccAddressXmttNew_location",
-    province: '[id="connectForm:j_idt1904:svAccountInfo:j_idt2835:j_idt1904txtAccAddressXmttNewprovince_input"]',
-    precinct: '[id="connectForm:j_idt1904:svAccountInfo:j_idt2835:j_idt1904txtAccAddressXmttNewprecinct_input"]',
-    groupStreet: '[id="connectForm:j_idt1904:svAccountInfo:j_idt2835:j_idt1904txtAccAddressXmttNewgroupStreet_input"]',
-    street: '[id="connectForm:j_idt1904:svAccountInfo:j_idt2835:j_idt1904txtAccAddressXmttNewstreetPro"]',
-    saveButton: ".j_idt1904txtAccAddressXmttNewbtnSumitLocation",
-    dialog: ".aj_idt1904txtAccAddressXmttNewdlgLocation",
+    province: '[id$="txtAccAddressXmttNewprovince_input"]',
+    precinct: '[id$="txtAccAddressXmttNewprecinct_input"]',
+    groupStreet: '[id$="txtAccAddressXmttNewgroupStreet_input"]',
+    street: '[id$="txtAccAddressXmttNewstreetPro"]',
+    saveButton: '[class*="txtAccAddressXmttNewbtnSumitLocation"]',
+    dialog: '[class*="txtAccAddressXmttNewdlgLocation"]',
   },
 };
 
@@ -178,7 +191,8 @@ const DOCUMENT_SLOTS = [
 
 // â”€â”€â”€ Selectors â€” Captcha & Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const SEL_CAPTCHA_INPUT  = '[id="connectForm:capcha:capcha1"], input[data-p-label="Mã xác nhận"], input.acapchapinputCaptcha';
-const SEL_CAPTCHA_RELOAD = '[id="connectForm:capcha:j_idt5320"]';
+const SEL_CAPTCHA_IMG    = '[id="connectForm:capcha:captchaImg"]';
+const SEL_CAPTCHA_RELOAD = '.fcapcha, [id="connectForm:capcha:j_idt5320"], [id="connectForm:capcha:j_idt5329"]';
 const SEL_BTN_DAU_NOI   = '[id="connectForm:buttonDoConnectId:j_idt5328"]';
 const SEL_BTN_DONG_Y    = '[id="connectForm:buttonDoConnectId:j_idt5363"]';
 
@@ -534,6 +548,42 @@ async function selectNativeAndChange(page, selector, value, opts = {}) {
 async function safeClick(page, selector, opts = {}) {
   await page.click(selector, { timeout: opts.timeout ?? 10000, force: !!opts.force });
   if (opts.wait) await sleep(opts.wait);
+}
+
+// Chọn PrimeFaces SelectOneMenu KIỂU CLICK như người thật (mở dropdown → click option).
+// Dùng cho các dropdown "nhạy cảm" mà chọc <select> ẩn gây kẹt (vd Chu kỳ cước).
+// rootSuffix: đuôi id của div widget (không có _input/_label/_focus).
+async function selectOneMenuByClick(page, rootSuffix, optionLabel) {
+  await page.evaluate(`
+    (function(suffix){
+      const root = Array.from(document.querySelectorAll('.ui-selectonemenu'))
+        .find(r => r.id && r.id.endsWith(suffix));
+      if (!root) return;
+      const trig = root.querySelector('.ui-selectonemenu-trigger')
+                || root.querySelector('.ui-selectonemenu-label');
+      if (trig) trig.click();
+    })(${JSON.stringify(rootSuffix)})
+  `).catch(() => {});
+  await sleep(400);
+  const picked = await page.evaluate(`
+    (function(label){
+      const panels = document.querySelectorAll('.ui-selectonemenu-panel');
+      let panel = null;
+      for (const p of panels) {
+        const s = getComputedStyle(p);
+        if (s.display !== 'none' && s.visibility !== 'hidden') { panel = p; break; }
+      }
+      if (!panel) return null;
+      const items = panel.querySelectorAll('li.ui-selectonemenu-item');
+      for (const it of items) {
+        const l = (it.getAttribute('data-label') || it.textContent || '').trim();
+        if (l === label) { it.click(); return l; }
+      }
+      return null;
+    })(${JSON.stringify(optionLabel)})
+  `).catch(() => null);
+  await sleep(300);
+  return { label: picked || optionLabel, ok: !!picked };
 }
 
 async function pressKey(page, key) {
@@ -1057,13 +1107,23 @@ async function login(page) {
 
   // Äiá»n username
   for (const sel of SEL_LOGIN_USER) {
-    try { await page.fill(sel, BCCS_USERNAME, { timeout: 3000 }); break; }
+    try {
+      const cur = await page.evaluate(`(function(s){const e=document.querySelector(s);return e?(e.value||'').trim():'';})(${JSON.stringify(sel)})`).catch(() => '');
+      if (!cur) { await page.fill(sel, BCCS_USERNAME, { timeout: 3000 }); console.log('  - Username: dien tu .env.'); }
+      else console.log('  - Username: da co san (' + cur + ') -> giu nguyen.');
+      break;
+    }
     catch { /* thá»­ selector tiáº¿p */ }
   }
 
   // Äiá»n password
   for (const sel of SEL_LOGIN_PASS) {
-    try { await page.fill(sel, BCCS_PASSWORD, { timeout: 3000 }); break; }
+    try {
+      const cur = await page.evaluate(`(function(s){const e=document.querySelector(s);return e?(e.value||'').trim():'';})(${JSON.stringify(sel)})`).catch(() => '');
+      if (!cur) { await page.fill(sel, BCCS_PASSWORD, { timeout: 3000 }); console.log('  - Password: dien tu .env.'); }
+      else console.log('  - Password: da co san -> giu nguyen.');
+      break;
+    }
     catch { /* thá»­ selector tiáº¿p */ }
   }
 
@@ -1322,6 +1382,77 @@ async function fillPackageSection(page, masterData) {
 // SECTION 3: THÃ”NG TIN THUÃŠ BAO
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
+// Chon 1 PrimeFaces SelectOneMenu trong bang subgoods theo TEXT cua option
+// (selectSel = CSS selector cua the <select> an ben trong widget).
+async function selectSubGoodsMenuByText(page, selectSel, textIncludes) {
+  await page.waitForSelector(selectSel, { timeout: 8000, state: "attached" });
+  const result = await page.evaluate(`
+    (function(sel, needle) {
+      const el = document.querySelector(sel);
+      if (!el) return { ok: false, reason: 'not-found' };
+      const want = needle.toLowerCase();
+      const opt = Array.from(el.options || [])
+        .find(o => (o.textContent || '').toLowerCase().includes(want));
+      if (!opt) return { ok: false, reason: 'option-not-found' };
+      el.value = opt.value;
+      opt.selected = true;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      if (el.id && el.id.endsWith('_input')) {
+        const lbl = document.getElementById(el.id.slice(0, -6) + '_label');
+        if (lbl) lbl.textContent = (opt.textContent || '').trim();
+      }
+      return { ok: true, label: (opt.textContent || '').trim() };
+    })(${JSON.stringify(selectSel)}, ${JSON.stringify(textIncludes)})
+  `);
+  if (!result?.ok) {
+    throw new Error(`select ${selectSel} ~ "${textIncludes}" failed: ${result?.reason || "unknown"}`);
+  }
+  return result;
+}
+
+// Dien muc "Danh sach thiet bi kem theo" (moi cua BCCS):
+//   Thiet bi -> S-Tracking V03 | Hinh thuc cung cap -> Ban dut | Serial -> serial_number.
+// Neu bang chua render thi bo qua an toan.
+async function fillSubGoodsSection(page, masterData) {
+  try {
+    await page.waitForSelector(SEL_SUBGOODS_SERIAL, { timeout: 5000, state: "attached" });
+  } catch {
+    console.log('    Bo qua "Danh sach thiet bi kem theo" (khong thay bang).');
+    return;
+  }
+
+  console.log(`\n  [BCCS] Dien "Danh sach thiet bi kem theo"...`);
+
+  try {
+    const r = await selectSubGoodsMenuByText(page, SEL_SUBGOODS_DEVICE, SUBGOODS_DEVICE_TEXT);
+    console.log(`    - Thiet bi: ${r.label}`);
+    await sleep(T.ajax_wait);
+  } catch (err) { console.warn(`    Thiet bi failed: ${err.message}`); }
+
+  try {
+    const r = await selectSubGoodsMenuByText(page, SEL_SUBGOODS_SUPPLY, SUBGOODS_SUPPLY_TEXT);
+    console.log(`    - Hinh thuc cung cap: ${r.label}`);
+    await sleep(T.ajax_wait);
+  } catch (err) { console.warn(`    Hinh thuc cung cap failed: ${err.message}`); }
+
+  if (masterData.serial_number) {
+    try {
+      await safeFill(page, SEL_SUBGOODS_SERIAL, masterData.serial_number);
+      await page.evaluate(`
+        (function(sel) {
+          const el = document.querySelector(sel);
+          if (!el) return;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+          el.dispatchEvent(new Event('blur', { bubbles: true }));
+        })(${JSON.stringify(SEL_SUBGOODS_SERIAL)})
+      `);
+      console.log(`    - Serial: ${masterData.serial_number}`);
+    } catch (err) { console.warn(`    Serial (subgoods) failed: ${err.message}`); }
+  }
+}
+
 async function fillSubscriberSection(page, masterData) {
   console.log(`\n  ðŸ“¡ [BCCS] Äiá»n thÃ´ng tin thuÃª bao...`);
 
@@ -1398,6 +1529,9 @@ async function fillSubscriberSection(page, masterData) {
     throw new Error("Dia chi lap dat missing province/district/precinct/groupStreet.");
   }
 
+  // Danh sach thiet bi kem theo (muc moi cua BCCS) — dien truoc khi reload ISDN
+  await fillSubGoodsSection(page, masterData);
+
   console.log(`    Reload ISDN last`);
   try {
     await safeClick(page, SEL_RELOAD_ISDN, { wait: T.ajax_wait });
@@ -1458,7 +1592,7 @@ async function fillPaymentSection(page, masterData) {
   // â”€â”€ Chu ká»³ cÆ°á»›c: native select áº©n cá»§a PrimeFaces, chá»n value rá»“i dispatch change â”€â”€
   console.log(`    â€¢ Chu ká»³ cÆ°á»›c...`);
   try {
-    const res = await selectNativeAndChange(page, SEL_BILL_CYCLE, "1", { wait: T.ajax_wait });
+    const res = await selectOneMenuByClick(page, "svAccountInfo:cbxViewBillCycle", "chu ky cuoc 1");
     console.log(`    âœ… Chu ká»³ cÆ°á»›c: ${res.label}`);
   } catch (err) { console.warn(`    âš ï¸  Chu ká»³ cÆ°á»›c â€” tháº¥t báº¡i: ${err.message}`); }
 
@@ -1466,6 +1600,7 @@ async function fillPaymentSection(page, masterData) {
   for (const { label, sel, value } of [
     { label: "HÃ¬nh thá»©c TT",  sel: SEL_PAY_METHOD,    value: "01", pfLabel: "" },
     { label: "HÃ¬nh thá»©c TBC", sel: SEL_NOTICE_CHARGE, value: "2",  pfLabel: "" },
+    { label: "In chi tiet cuoc", sel: SEL_PRINT_METHOD, value: "2",  pfLabel: "" },
   ]) {
     console.log(`    â€¢ ${label}`);
     try {
@@ -1477,6 +1612,14 @@ async function fillPaymentSection(page, masterData) {
   }
 
   // â”€â”€ Äiá»‡n thoáº¡i â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Chu kỳ cước: chọn LẠI sau các dropdown khác (option "1" có thể chưa sẵn sàng lúc đầu).
+  try {
+    const res = await selectOneMenuByClick(page, "svAccountInfo:cbxViewBillCycle", "chu ky cuoc 1");
+    console.log("    Chu ky cuoc: " + res.label);
+  } catch (err) {
+    console.warn("    Chu ky cuoc - that bai: " + err.message);
+  }
+
   if (masterData.owner_phone) {
     console.log(`    â€¢ Äiá»‡n thoáº¡i: ${masterData.owner_phone}`);
     try {
@@ -1525,8 +1668,8 @@ async function fillDocumentSection(page, masterData) {
       continue;
     }
 
-    const selType = `[id="connectForm:j_idt5237:j_idt5248:${slot.index}:showUploadFileDocdocumentTypeCbx_input"]`;
-    const selFile = `[id="connectForm:j_idt5237:j_idt5248:${slot.index}:j_idt5260_input"]`;
+    // Đuôi ổn định (index + tên component) — miễn nhiễm j_idt tự sinh của prefix.
+    const selType = `[id$="${slot.index}:showUploadFileDocdocumentTypeCbx_input"]`;
 
     try {
       await page.selectOption(selType, slot.type, { timeout: 8000 });
@@ -1535,7 +1678,20 @@ async function fillDocumentSection(page, masterData) {
     }
 
     try {
-      await page.setInputFiles(selFile, filePath, { state: "attached" });
+      // Tìm id thật của ô upload cùng hàng: lấy prefix từ id thật của ô chọn loại,
+      // rồi tìm input[type=file] có id bắt đầu bằng prefix đó (không phụ thuộc j_idt).
+      const fileInputId = await page.evaluate(`
+        (function(typeSel){
+          const t = document.querySelector(typeSel);
+          if (!t) return null;
+          const prefix = t.id.replace(/showUploadFileDocdocumentTypeCbx_input$/, '');
+          const f = Array.from(document.querySelectorAll('input[type="file"]'))
+            .find(el => el.id && el.id.indexOf(prefix) === 0);
+          return f ? f.id : null;
+        })(${JSON.stringify(selType)})
+      `).catch(() => null);
+      if (!fileInputId) throw new Error("khong tim thay o upload file cua hang nay");
+      await page.setInputFiles(`[id="${fileInputId}"]`, filePath, { state: "attached" });
       console.log(`    âœ… ${slot.label}: ${path.basename(filePath)}`);
       uploaded++;
     } catch (err) {
@@ -1550,26 +1706,127 @@ async function fillDocumentSection(page, masterData) {
 // CAPTCHA + SUBMIT
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-async function handoffToUserAtCaptcha(page) {
-  console.log(`\n  🔐 [BCCS] Đã điền xong form. Chuyển quyền thao tác cho người dùng tại ô captcha...`);
-  try { await safeClick(page, SEL_CAPTCHA_RELOAD, { wait: 800 }); } catch {}
-
-  const focused = await page.evaluate(`
-    (function(sel) {
-      const el = document.querySelector(sel);
-      if (!el) return false;
-      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-      el.focus();
-      el.click();
-      return true;
-    })(${JSON.stringify(SEL_CAPTCHA_INPUT)})
-  `).catch(() => false);
-
-  if (focused) {
-    console.log(`  ✅ [BCCS] Đã focus vào ô Mã xác nhận. Người dùng tự nhập captcha và bấm Đấu nối.`);
-  } else {
-    console.warn(`  ⚠️  [BCCS] Không tìm thấy ô Mã xác nhận để focus. Người dùng kiểm tra thủ công trên SFive.`);
+// Chụp ảnh captcha trong SFive → base64 data URI (chụp thẳng phần tử, không fetch URL).
+async function captureCaptchaImage(page) {
+  // SFivePage (CDP) không có .locator() → vẽ ảnh captcha lên canvas rồi lấy dataURL.
+  // Ảnh captcha same-origin (/SALE_WEB) nên canvas không bị taint.
+  try {
+    const dataUri = await page.evaluate(`
+      (function(sel){
+        const img = document.querySelector(sel);
+        if (!img) return null;
+        try {
+          const w = img.naturalWidth || img.width || 130;
+          const h = img.naturalHeight || img.height || 40;
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          return c.toDataURL('image/png');
+        } catch (e) { return null; }
+      })(${JSON.stringify(SEL_CAPTCHA_IMG)})
+    `).catch(() => null);
+    if (!dataUri || String(dataUri).indexOf("data:image") !== 0) {
+      console.warn(`  ⚠️  Không lấy được ảnh captcha (ảnh chưa tải hoặc canvas lỗi).`);
+      return null;
+    }
+    return dataUri;
+  } catch (err) {
+    console.warn(`  ⚠️  Không chụp được ảnh captcha: ${err.message}`);
+    return null;
   }
+}
+
+async function clickReloadCaptcha(page) {
+  try { await page.click(".fcapcha", { timeout: 4000 }); }
+  catch { try { await safeClick(page, SEL_CAPTCHA_RELOAD, { wait: 300 }); } catch {} }
+  await sleep(1200); // chờ ảnh captcha mới render
+}
+
+async function typeCaptcha(page, code) {
+  await safeFill(page, SEL_CAPTCHA_INPUT, String(code || ""));
+}
+
+// Heuristic: BCCS báo "Thông tin mã xác nhận không chính xác" khi captcha sai.
+async function isCaptchaWrong(page) {
+  return await page.evaluate(`
+    (function(){
+      const t = (document.body && document.body.innerText) || '';
+      return /mã xác nhận không chính xác/i.test(t) || /mã xác nhận là bắt buộc/i.test(t);
+    })()
+  `).catch(() => false);
+}
+
+async function waitConnectSuccess(page, timeout = 30000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    const ok = await page.evaluate(`
+      (function(){
+        const el = document.querySelector('[id="connectForm:dlgConnectInfor"]');
+        return !!el && window.getComputedStyle(el).display !== 'none';
+      })()
+    `).catch(() => false);
+    if (ok) return true;
+    await sleep(500);
+  }
+  return false;
+}
+
+// Bàn giao captcha qua giao diện tool: chụp ảnh → chờ nhân viên nhập → điền vào SFive.
+// testMode=true: điền captcha vào SFive nhưng KHÔNG bấm Đấu nối (chạy nháp).
+async function handleCaptchaViaBridge(page, testMode) {
+  console.log(`\n  🔐 [BCCS] Bàn giao captcha qua giao diện tool${testMode ? " (TEST — không bấm Đấu nối)" : ""}...`);
+  const DEADLINE = Date.now() + 5 * 60 * 1000; // tổng 5 phút cho cả quá trình
+
+  while (Date.now() < DEADLINE) {
+    const image = await captureCaptchaImage(page);
+    if (!image) return { done: false, submitted: false, reason: "no-image" };
+
+    const res = await captchaBridge.waitForCaptcha({ image, testMode }, 3 * 60 * 1000);
+
+    if (res.type === "timeout" || res.type === "cancel") {
+      console.warn(`  ⏱  Kết thúc chờ captcha (${res.type}).`);
+      return { done: false, submitted: false, reason: res.type };
+    }
+    if (res.type === "reload") {
+      console.log(`  🔄 Người dùng bấm Đổi mã captcha.`);
+      await clickReloadCaptcha(page);
+      continue;
+    }
+
+    // res.type === 'answer'
+    console.log(`  ⌨️  Nhận mã captcha từ giao diện → điền vào SFive.`);
+    await typeCaptcha(page, res.code);
+
+    if (testMode) {
+      console.log(`  🧪 TEST MODE — đã điền captcha, KHÔNG bấm Đấu nối.`);
+      return { done: true, submitted: false, test_mode: true };
+    }
+
+    // Bấm Đấu nối
+    try { await safeClick(page, SEL_BTN_DAU_NOI, { wait: T.ajax_wait }); }
+    catch (err) { console.warn(`  ⚠️  Không bấm được Đấu nối: ${err.message}`); }
+    await sleep(1500);
+
+    if (await isCaptchaWrong(page)) {
+      console.log(`  ❌ Captcha sai → tự đổi mã, yêu cầu nhập lại.`);
+      await clickReloadCaptcha(page);
+      continue;
+    }
+
+    // Bấm Đồng ý (nếu có dialog xác nhận) rồi chờ dialog kết quả
+    try { await safeClick(page, SEL_BTN_DONG_Y, { wait: T.ajax_wait }); } catch {}
+    const ok = await waitConnectSuccess(page, 30000);
+    if (ok) {
+      console.log(`  🎉 [BCCS] Đấu nối thành công!`);
+      return { done: true, submitted: true };
+    }
+    // Không thấy dialog thành công: có thể vẫn sai mã hoặc lỗi khác
+    if (await isCaptchaWrong(page)) { await clickReloadCaptcha(page); continue; }
+    console.warn(`  ⚠️  Không xác nhận được kết quả đấu nối — kiểm tra trên SFive.`);
+    return { done: true, submitted: true, unconfirmed: true };
+  }
+
+  return { done: false, submitted: false, reason: "deadline" };
 }
 
 async function submitForm(page) {
@@ -1658,18 +1915,30 @@ async function runBCCS(masterData, testMode = false) {
     await fillDocumentSection(page, masterData);
 
     // â”€â”€ Captcha + Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    await handoffToUserAtCaptcha(page);
+    const capResult = await handleCaptchaViaBridge(page, testMode);
     keepSFiveOpen = !IS_MOCK_TEST;
 
     const duration = Date.now() - startTime;
-    console.log(`\n  ⏱  [BCCS] Đã điền xong form trong ${(duration / 1000).toFixed(1)}s — chờ người dùng hoàn tất thủ công.`);
+    console.log(`\n  ⏱  [BCCS] Hoàn tất luồng trong ${(duration / 1000).toFixed(1)}s.`);
     console.log("â•".repeat(60) + "\n");
+    let message;
+    if (capResult.submitted) {
+      message = capResult.unconfirmed
+        ? "BCCS đã bấm Đấu nối nhưng chưa xác nhận được kết quả — kiểm tra trên SFive."
+        : "BCCS đấu nối thành công.";
+    } else if (capResult.test_mode) {
+      message = "TEST MODE — đã điền captcha vào SFive, KHÔNG bấm Đấu nối.";
+    } else {
+      message = "BCCS đã điền xong nhưng captcha chưa hoàn tất — vui lòng kiểm tra/hoàn tất trên SFive.";
+    }
+
     return {
       success: true,
       duration_ms: duration,
       test_mode: testMode,
-      manual_handoff: true,
-      message: "BCCS đã điền xong. Vui lòng nhập captcha, bấm Đấu nối và kiểm tra kết quả trên SFive.",
+      manual_handoff: !capResult.submitted,
+      captcha: capResult,
+      message,
     };
 
   } catch (err) {

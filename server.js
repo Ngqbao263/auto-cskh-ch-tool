@@ -36,6 +36,10 @@ const { createClient } = require("@supabase/supabase-js");
 const { insertCSKH } = require("./automation/cskh-db-handler"); // DB insert
 const { runCauhinh } = require("./automation/cauhinh-handler"); // Playwright Viettel
 const { runBCCS } = require("./automation/bccs-handler"); // Playwright BCCS
+const {
+  extractFromImages,
+} = require("./automation/image-extract-handler"); // AI đọc ảnh giấy tờ
+const captchaBridge = require("./automation/captcha-bridge"); // captcha BCCS ↔ giao diện
 
 // Supabase client dùng cho các API nhẹ (search, lookup) — không phải automation
 const _supabaseUrl = (process.env.SUPABASE_URL || "")
@@ -53,7 +57,7 @@ const supabase =
 // CONFIG — Chỉnh tại đây, không cần sửa code bên dưới
 // ─────────────────────────────────────────────────────────────────────────────
 const CONFIG = {
-  port: 3000,
+  port: Number(process.env.PORT) || 3000,
   headless: false, // false = thấy browser (dễ debug); true = chạy ẩn
   slowMo: 60, // ms delay giữa các action Playwright
   run_mode: "parallel", // 'parallel' | 'sequential'
@@ -74,7 +78,7 @@ const CONFIG = {
   test_mode: {
     cskh: false, // false = Chạy thật (Ghi vào Supabase)
     cauhinh: false, // true  = Chạy nháp (Không click Lưu Viettel)
-    bccs: false, // true  = Chạy nháp (Không click Lưu BCCS)
+    bccs: true, // true  = Chạy nháp (Không click Lưu BCCS)
   },
 };
 
@@ -112,6 +116,17 @@ const UPLOAD_FIELDS = [
   { name: "file_hop_dong", maxCount: 1 },
   { name: "file_phu_luc", maxCount: 1 },
 ];
+
+// ─── Ảnh cho AI trích xuất (điền form tự động) ──────────────────────────────
+// field name (multipart)  →  slot key mà image-extract-handler hiểu
+const EXTRACT_FIELD_TO_SLOT = {
+  img_device: "device",
+  img_cccd_front: "cccd_front",
+  img_cccd_back: "cccd_back",
+  img_ship: "ship",
+  img_captain: "captain",
+  img_fishing_license: "fishing_license",
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPER: Lưu log chạy ra file JSON
@@ -334,6 +349,7 @@ app.post(
       )}`
     );
     const startTime = Date.now();
+    captchaBridge.clear(); // dọn phiên captcha cũ (nếu có) trước khi chạy
 
     // masterData gửi lên dưới dạng JSON string trong multipart field "masterData"
     let masterData;
@@ -686,6 +702,78 @@ app.post(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// API: POST /api/extract-image
+// Nhận tối đa 5 ảnh giấy tờ → AI đọc → trả JSON { fields, captain_is_owner, notes }
+// để frontend tự điền vào form. Bật IMAGE_EXTRACT_MOCK=true để test miễn phí.
+// ─────────────────────────────────────────────────────────────────────────────
+// upload.any() + bắt lỗi → luôn trả JSON (không rơi vào HTML error page của Express),
+// và dung nạp field lạ (không crash "Unexpected field" nếu frontend/server lệch phiên bản).
+function extractUpload(req, res, next) {
+  upload.any()(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({
+        success: false,
+        error: "Lỗi khi tải ảnh lên: " + err.message,
+        fields: {},
+        notes: [],
+      });
+    }
+    next();
+  });
+}
+
+app.post("/api/extract-image", extractUpload, async (req, res) => {
+  const files = Array.isArray(req.files) ? req.files : [];
+  // Đường dẫn của MỌI file đã upload (kể cả field lạ) — để xoá sạch ở cuối
+  const allUploadedPaths = files.map((f) => f.path).filter(Boolean);
+  const cleanup = () =>
+    allUploadedPaths.forEach((p) => {
+      try {
+        fs.unlinkSync(p);
+      } catch {
+        /* bỏ qua */
+      }
+    });
+
+  const slots = [];
+  for (const f of files) {
+    const slotKey = EXTRACT_FIELD_TO_SLOT[f.fieldname];
+    if (slotKey && f.path) slots.push({ key: slotKey, path: f.path });
+  }
+
+  if (slots.length === 0) {
+    cleanup();
+    return res.status(400).json({
+      success: false,
+      error: "Chưa chọn ảnh nào để đọc.",
+      fields: {},
+      notes: [],
+    });
+  }
+
+  console.log(
+    `\n📷 [API] POST /api/extract-image — ${slots.length} ảnh (${slots
+      .map((s) => s.key)
+      .join(", ")})`
+  );
+
+  try {
+    const result = await extractFromImages(slots);
+    return res.status(result.success ? 200 : 502).json(result);
+  } catch (err) {
+    console.error(`❌ [extract-image] Lỗi server: ${err.message}`);
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+      fields: {},
+      notes: [],
+    });
+  } finally {
+    cleanup(); // Xoá ảnh tạm — không giữ giấy tờ cá nhân trên đĩa
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // API: GET /api/logs
 // ─────────────────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
@@ -971,6 +1059,31 @@ app.post("/api/address/convert-new", async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// API: Captcha BCCS — bàn giao cho người dùng nhập qua giao diện
+//   GET  /api/bccs/captcha         → ảnh captcha đang chờ (nếu có)
+//   POST /api/bccs/captcha         → { id, code } gửi mã
+//   POST /api/bccs/captcha/reload  → { id } đổi mã captcha
+// ─────────────────────────────────────────────────────────────────────────────
+app.get("/api/bccs/captcha", (_req, res) => {
+  const pending = captchaBridge.getPending();
+  res.json(pending || { none: true });
+});
+
+app.post("/api/bccs/captcha", (req, res) => {
+  const { id, code } = req.body ?? {};
+  if (!id) return res.status(400).json({ ok: false, error: "Thiếu id." });
+  const ok = captchaBridge.answer(id, code);
+  res.json({ ok });
+});
+
+app.post("/api/bccs/captcha/reload", (req, res) => {
+  const { id } = req.body ?? {};
+  if (!id) return res.status(400).json({ ok: false, error: "Thiếu id." });
+  const ok = captchaBridge.reload(id);
+  res.json({ ok });
+});
+
 app.get("/api/logs", (_req, res) => {
   try {
     const files = fs
@@ -1063,7 +1176,7 @@ ${
   Nhấn Ctrl+C để dừng server.
 `);
 
-  // Timeout 5 phút cho mỗi request — tránh connection treo mãi
-  // (lớn hơn request_timeout automation 3 phút để server luôn kịp gửi response)
-  server.setTimeout(5 * 60 * 1000);
+  // Timeout 12 phút cho mỗi request — luồng BCCS có thể chờ người dùng nhập captcha
+  // qua giao diện (tối đa ~5 phút) nên cần dài hơn để không cắt kết nối giữa chừng.
+  server.setTimeout(12 * 60 * 1000);
 });

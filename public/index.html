@@ -465,6 +465,101 @@
             border-left: 3px solid var(--amber-lt);
         }
 
+        /* ─── AI EXTRACT (Tải ảnh tự động điền) ───────────────────────────── */
+        .icon-ai {
+            background: rgba(236, 72, 153, 0.15);
+        }
+
+        .btn-extract {
+            width: 100%;
+            padding: 0.55rem 1rem;
+            background: linear-gradient(135deg, #ec4899, #a855f7);
+            border: none;
+            border-radius: var(--radius);
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: filter 0.15s, opacity 0.15s;
+        }
+
+        .btn-extract:hover {
+            filter: brightness(1.08);
+        }
+
+        .btn-extract:disabled {
+            opacity: 0.55;
+            cursor: progress;
+        }
+
+        .extract-status {
+            margin-top: 0.75rem;
+            font-size: 0.78rem;
+            padding: 0.55rem 0.8rem;
+            border-radius: var(--radius);
+            border-left: 3px solid var(--text-3);
+            background: var(--navy-800);
+            color: var(--text-2);
+        }
+
+        .extract-status.is-loading {
+            border-left-color: #a855f7;
+        }
+
+        .extract-status.is-success {
+            border-left-color: var(--success);
+            color: var(--success);
+        }
+
+        .extract-status.is-error {
+            border-left-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .extract-notes {
+            margin-top: 0.5rem;
+            font-size: 0.74rem;
+            color: var(--text-2);
+            background: var(--navy-800);
+            border-radius: var(--radius);
+            padding: 0.5rem 0.75rem;
+            border-left: 3px solid var(--amber-lt);
+        }
+
+        .extract-notes ul {
+            margin: 0.25rem 0 0;
+            padding-left: 1.1rem;
+        }
+
+        .extract-notes li {
+            margin: 0.15rem 0;
+        }
+
+        .btn-undo-fill {
+            margin-left: 0.6rem;
+            padding: 0.15rem 0.55rem;
+            font-size: 0.72rem;
+            background: var(--navy-700);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text-2);
+            cursor: pointer;
+        }
+
+        .btn-undo-fill:hover {
+            border-color: var(--amber-lt);
+        }
+
+        /* Ô vừa được AI điền — tô vàng để rà soát */
+        .ai-filled,
+        .ai-filled:focus {
+            background: rgba(245, 158, 11, 0.18) !important;
+            border-color: var(--amber-lt) !important;
+            box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.35) inset;
+            transition: background 0.3s, border-color 0.3s;
+        }
+
         /* ─── INPUTS ─────────────────────────────────────────────────────── */
         input[type="text"],
         input[type="number"],
@@ -1486,6 +1581,103 @@
             </div>
         </header>
 
+        <!-- ── SECTION 0: TẢI ẢNH — AI TỰ ĐỘNG ĐIỀN ─────────────────────────── -->
+        <div class="section-card" id="sec-ai-extract">
+            <div class="section-header" onclick="toggleSection('sec-ai-extract')">
+                <div class="section-icon icon-ai">📷</div>
+                <div class="section-title">Tải ảnh / PDF — AI tự động điền
+                    <span style="font-weight:400; font-size:0.7rem; color:var(--text-3); margin-left:6px;">(Thông
+                        tin tàu / chủ tàu / thuyền trưởng)</span>
+                </div>
+                <span class="section-count">6 ảnh/PDF</span>
+                <span class="section-chevron">▼</span>
+            </div>
+            <div class="section-body">
+                <div class="form-grid cols-3">
+                    <div class="field-group">
+                        <label>1. Thông tin thiết bị (app) <span class="hint">→ Serial</span></label>
+                        <div class="file-row">
+                            <label class="file-btn" for="img_device">📂 Chọn ảnh/PDF</label>
+                            <input type="file" id="img_device" accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                onchange="showFileName(this)">
+                            <span class="file-name" id="img_device_name">Chưa chọn</span>
+                            <button type="button" class="file-clear" title="Xoá"
+                                onclick="clearFile('img_device')">✕</button>
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label>2. CCCD chủ tàu — mặt trước <span class="hint">→ Chủ tàu</span></label>
+                        <div class="file-row">
+                            <label class="file-btn" for="img_cccd_front">📂 Chọn ảnh/PDF</label>
+                            <input type="file" id="img_cccd_front" accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                onchange="showFileName(this); mirrorCccdToDocs('img_cccd_front','file_cmnd_truoc')">
+                            <span class="file-name" id="img_cccd_front_name">Chưa chọn</span>
+                            <button type="button" class="file-clear" title="Xoá"
+                                onclick="clearFile('img_cccd_front')">✕</button>
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label>3. CCCD chủ tàu — mặt sau <span class="hint">→ Ngày cấp + địa chỉ</span></label>
+                        <div class="file-row">
+                            <label class="file-btn" for="img_cccd_back">📂 Chọn ảnh/PDF</label>
+                            <input type="file" id="img_cccd_back" accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                onchange="showFileName(this); mirrorCccdToDocs('img_cccd_back','file_cmnd_sau')">
+                            <span class="file-name" id="img_cccd_back_name">Chưa chọn</span>
+                            <button type="button" class="file-clear" title="Xoá"
+                                onclick="clearFile('img_cccd_back')">✕</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-grid cols-3" style="margin-top:0.75rem;">
+                    <div class="field-group">
+                        <label>4. Giấy đăng ký tàu cá <span class="hint">→ Thông tin tàu</span></label>
+                        <div class="file-row">
+                            <label class="file-btn" for="img_ship">📂 Chọn ảnh/PDF</label>
+                            <input type="file" id="img_ship" accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                onchange="showFileName(this)">
+                            <span class="file-name" id="img_ship_name">Chưa chọn</span>
+                            <button type="button" class="file-clear" title="Xoá"
+                                onclick="clearFile('img_ship')">✕</button>
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label>5. Thuyền trưởng — chứng chỉ / CCCD <span class="hint">→ Thuyền trưởng</span></label>
+                        <div class="file-row">
+                            <label class="file-btn" for="img_captain">📂 Chọn ảnh/PDF</label>
+                            <input type="file" id="img_captain" accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                onchange="showFileName(this)">
+                            <span class="file-name" id="img_captain_name">Chưa chọn</span>
+                            <button type="button" class="file-clear" title="Xoá"
+                                onclick="clearFile('img_captain')">✕</button>
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label>6. Giấy phép khai thác thủy sản <span class="hint">→ Số di động tàu (nếu có)</span></label>
+                        <div class="file-row">
+                            <label class="file-btn" for="img_fishing_license">📂 Chọn ảnh/PDF</label>
+                            <input type="file" id="img_fishing_license" accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                onchange="showFileName(this)">
+                            <span class="file-name" id="img_fishing_license_name">Chưa chọn</span>
+                            <button type="button" class="file-clear" title="Xoá"
+                                onclick="clearFile('img_fishing_license')">✕</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-grid" style="margin-top:0.75rem;">
+                    <button type="button" class="btn-extract" id="btn-extract"
+                        onclick="readAndFillImages()">🔍 Đọc tất cả &amp; điền</button>
+                </div>
+
+                <div id="extract-status" class="extract-status" style="display:none;"></div>
+                <div id="extract-notes" class="extract-notes" style="display:none;"></div>
+                <p class="docs-note">
+                    💡 AI đọc ảnh rồi điền vào các mục bên dưới, <strong>tô vàng</strong> ô vừa điền để bạn rà soát.
+                    Ô đã có dữ liệu sẽ <strong>không</strong> bị ghi đè. Ảnh chỉ dùng để đọc, không lưu lại.
+                </p>
+            </div>
+        </div>
+
         <!-- ── SECTION 1: THÔNG TIN TÀU ──────────────────────────────────────── -->
         <div class="section-card" id="sec-ship">
             <div class="section-header" onclick="toggleSection('sec-ship')">
@@ -2085,6 +2277,35 @@
     </div>
 
     <!-- ── HELP MODAL ─────────────────────────────────────────────────────────── -->
+    <!-- ── MODAL: Captcha BCCS (người dùng nhập, tool điền vào SFive) ── -->
+    <div class="modal-overlay" id="captcha-modal">
+        <div class="modal-box" style="max-width: 420px;">
+            <div class="modal-head">
+                <div class="modal-title">🔐 Nhập mã xác nhận (BCCS)</div>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:0.8rem;color:var(--text-2);margin-bottom:0.75rem;">
+                    Nhập mã trong ảnh rồi bấm <strong>Xác nhận</strong> — tool sẽ tự điền vào SFive.
+                </p>
+                <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+                    <img id="captcha-image" alt="captcha"
+                        style="height:44px;border:1px solid var(--border);border-radius:6px;background:#fff;" />
+                    <button type="button" class="btn-undo-fill" onclick="reloadCaptcha()" title="Đổi mã khác">🔄
+                        Đổi mã</button>
+                </div>
+                <input type="text" id="captcha-code" placeholder="Nhập mã xác nhận" autocomplete="off"
+                    style="width:100%;"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();submitCaptcha();}" />
+                <div id="captcha-status"
+                    style="font-size:0.75rem;color:var(--text-3);margin-top:0.5rem;min-height:1em;"></div>
+                <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:1rem;">
+                    <button type="button" class="btn-extract" style="width:auto;padding:0.5rem 1.2rem;"
+                        onclick="submitCaptcha()">Xác nhận</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="help-modal" onclick="closeHelpModal(event)">
         <div class="modal-box">
             <div class="modal-head">
@@ -2847,7 +3068,7 @@
             return el?.tagName === 'SELECT' ? 'chọn' : 'điền';
         }
 
-        function addFieldError(el, label) {
+        function addFieldError(el, label, customMessage) {
             if (!el) return;
             el.classList.add('is-invalid');
             const group = el.closest('.field-group') || el.parentElement;
@@ -2859,7 +3080,7 @@
             const error = document.createElement('div');
             error.className = 'field-error';
             error.dataset.for = el.id || '';
-            error.textContent = `Vui lòng ${fieldVerb(el)} ${getFieldLabel(el, label)}`;
+            error.textContent = customMessage || `Vui lòng ${fieldVerb(el)} ${getFieldLabel(el, label)}`;
             el.insertAdjacentElement('afterend', error);
         }
 
@@ -2867,6 +3088,15 @@
             if (!el || el.disabled) return false;
             if (el.type === 'checkbox') return !el.checked;
             return String(el.value ?? '').trim() === '';
+        }
+
+        // Giá trị có phải là MÃ hợp lệ trong danh sách autocomplete không (so theo 'code').
+        // Nếu danh sách chưa nạp (undefined) thì không chặn (trả về true) để tránh chặn nhầm.
+        function isValidCode(list, value) {
+            if (!Array.isArray(list)) return true;
+            const v = String(value || '').trim().toLowerCase();
+            if (!v) return false;
+            return list.some(item => String(item.code || '').trim().toLowerCase() === v);
         }
 
         function focusFirstInvalid(firstInvalidElement) {
@@ -2908,6 +3138,25 @@
                 const el = document.getElementById(id);
                 if (!isEmptyField(el)) return;
                 addFieldError(el, label);
+                invalidCount += 1;
+                if (!firstInvalidElement) firstInvalidElement = el;
+            });
+
+            // Mã cảng / Mã ngành nghề / Tỉnh thành PHẢI là mã hợp lệ (đã chọn từ gợi ý),
+            // không được để nguyên tên. So khớp value với 'code' trong danh sách tương ứng.
+            const CODE_FIELDS = [
+                ['ma_cang', 'Mã cảng', window.__MA_CANG],
+                ['ma_nganh_nghe', 'Mã ngành nghề', window.__NGANH_NGHE],
+                ['tinh_thanh', 'Tỉnh thành', window.__MA_TINH],
+            ];
+            CODE_FIELDS.forEach(([id, label, list]) => {
+                const el = document.getElementById(id);
+                if (!el || el.disabled) return;
+                const val = String(el.value || '').trim();
+                if (!val) return; // trống đã được bắt ở phần required phía trên
+                if (isEmptyField(el)) return;
+                if (isValidCode(list, val)) return;
+                addFieldError(el, label, `Vui lòng chọn ${label} hợp lệ từ danh sách gợi ý (không để nguyên tên)`);
                 invalidCount += 1;
                 if (!firstInvalidElement) firstInvalidElement = el;
             });
@@ -3042,6 +3291,317 @@
             if (input) { input.value = ''; showFileName(input); }
         }
 
+        // Copy ảnh CCCD (khu AI) xuống ô CCCD tương ứng trong "Hồ sơ đính kèm",
+        // để không phải tải lại 2 lần. Chỉ copy khi khu AI có file.
+        function mirrorCccdToDocs(sourceId, targetId) {
+            const src = document.getElementById(sourceId);
+            const dst = document.getElementById(targetId);
+            if (!src || !dst || !src.files || !src.files[0]) return;
+            try {
+                const dt = new DataTransfer();
+                dt.items.add(src.files[0]);
+                dst.files = dt.files;
+                showFileName(dst);
+                if (typeof updateDocsRequiredState === 'function') updateDocsRequiredState();
+            } catch (e) {
+                console.warn('mirrorCccdToDocs lỗi:', e);
+            }
+        }
+
+        // ── AI: Đọc ảnh giấy tờ & tự động điền form ──────────────────────────────────
+        const EXTRACT_IMG_IDS = ['img_device', 'img_cccd_front', 'img_cccd_back', 'img_ship', 'img_captain', 'img_fishing_license'];
+        let lastAiFilledIds = [];
+        let lastAiToggle = { changed: false, prev: false };
+
+        function escapeHtmlAi(s) {
+            return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        }
+
+        function setExtractStatus(html, kind) {
+            const el = document.getElementById('extract-status');
+            if (!el) return;
+            el.style.display = 'block';
+            el.className = 'extract-status' + (kind ? ' is-' + kind : '');
+            el.innerHTML = html;
+        }
+
+        function renderExtractNotes(notes) {
+            const el = document.getElementById('extract-notes');
+            if (!el) return;
+            if (!notes || !notes.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+            el.style.display = 'block';
+            el.innerHTML = '<strong>📌 VUI LÒNG KIỂM TRA THÔNG TIN:</strong><ul>' +
+                notes.map(n => '<li>' + escapeHtmlAi(n) + '</li>').join('') + '</ul>';
+        }
+
+        function openSectionExpanded(id) {
+            document.getElementById(id)?.classList.remove('collapsed');
+        }
+
+        async function readAndFillImages() {
+            const btn = document.getElementById('btn-extract');
+            const formData = new FormData();
+            let count = 0;
+            EXTRACT_IMG_IDS.forEach(id => {
+                const f = document.getElementById(id)?.files?.[0];
+                if (f) { formData.append(id, f); count++; }
+            });
+            if (count === 0) {
+                setExtractStatus('⚠️ Vui lòng chọn ít nhất 1 ảnh trước khi đọc.', 'error');
+                return;
+            }
+
+            renderExtractNotes([]);
+            setExtractStatus('⏳ Đang đọc ' + count + ' ảnh, vui lòng chờ...', 'loading');
+            if (btn) btn.disabled = true;
+
+            try {
+                const resp = await fetch('/api/extract-image', { method: 'POST', body: formData });
+                const data = await resp.json();
+                if (!resp.ok || !data.success) throw new Error(data.error || ('HTTP ' + resp.status));
+
+                const res = fillFromExtraction(data);
+                const modeTag = data.mock ? ' 🧪(MOCK)' : '';
+                let msg = '✅ Đã điền <strong>' + res.filled + '</strong> trường' + modeTag + '.';
+                if (res.skipped) msg += ' Bỏ qua ' + res.skipped + ' ô đã có dữ liệu.';
+                if (res.filled > 0) msg += ' <button type="button" class="btn-undo-fill" onclick="undoAiFill()">↶ Hoàn tác</button>';
+                setExtractStatus(msg, 'success');
+                renderExtractNotes(data.notes);
+            } catch (err) {
+                setExtractStatus('❌ Lỗi: ' + escapeHtmlAi(err.message), 'error');
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        // Ô được phép ghi đè khi: đang trống HOẶC vẫn giữ giá trị mặc định của form
+        // (vd thông số tàu mặc định "0", giới tính mặc định "T"). Chỉ bảo vệ ô người
+        // dùng đã tự sửa (value khác defaultValue).
+        function isFieldOverwritable(el) {
+            const cur = (el.value || '').trim();
+            if (cur === '') return true;
+            if (el.tagName === 'SELECT') {
+                const def = Array.from(el.options).find(o => o.defaultSelected)?.value ?? '';
+                return el.value === def;
+            }
+            return el.value === el.defaultValue;
+        }
+
+        // Tự chọn MÃ cảng từ tên cảng: mở gợi ý autocomplete rồi click item khớp
+        // chính xác tên (hoặc gợi ý duy nhất) → set mã (vd 'Cổ Lũy' → 'CLU').
+        // Trả về true nếu đã tự chọn được.
+        function autoSelectMaCangCode(name) {
+            const list = document.getElementById('ma-cang-autocomplete');
+            if (!list || list.hidden) return false;
+            const target = String(name || '').trim().toLowerCase();
+            const items = Array.from(list.querySelectorAll('.autocomplete-item'));
+            if (!items.length) return false;
+            let match = items.find(li =>
+                (li.querySelector('.autocomplete-item-name')?.textContent || '')
+                    .trim().toLowerCase() === target);
+            if (!match && items.length === 1) match = items[0]; // chỉ 1 gợi ý → chọn luôn
+            if (match) { match.click(); return true; }
+            return false; // mơ hồ → để người dùng tự chọn
+        }
+
+        // Tự chọn MÃ ngành nghề từ tên nghề chính (vd 'Lưới vây' → mã 'SX' của
+        // option 'Nghề lưới vây'). Tra CHÍNH XÁC trên danh sách đầy đủ (không phụ
+        // thuộc dropdown chỉ hiện 10 dòng), ưu tiên 'Nghề <tên>' rồi '<tên>'.
+        function autoSelectNganhNghe(name) {
+            const listData = window.__NGANH_NGHE;
+            const input = document.getElementById('ma_nganh_nghe');
+            if (!Array.isArray(listData) || !input) return false;
+            const raw = String(name || '').trim().toLowerCase();
+            if (!raw) return false;
+            const candidates = raw.startsWith('nghề ') ? [raw] : ['nghề ' + raw, raw];
+            let match = null;
+            for (const cand of candidates) {
+                match = listData.find(item => item.name.trim().toLowerCase() === cand);
+                if (match) break;
+            }
+            if (!match) return false; // không khớp chính xác → để người dùng tự chọn
+            input.value = match.code;
+            const dropdown = document.getElementById('nganh-nghe-autocomplete');
+            if (dropdown) { dropdown.hidden = true; dropdown.innerHTML = ''; }
+            return true;
+        }
+
+        // Tự chọn MÃ tỉnh từ tên tỉnh (vd 'Quảng Ngãi' → 'QNg'). Tra CHÍNH XÁC tên
+        // trên danh sách đầy đủ để tránh nhầm Quảng Ngãi / Quảng Nam / Quảng Ninh.
+        function autoSelectTinhThanh(name) {
+            const listData = window.__MA_TINH;
+            const input = document.getElementById('tinh_thanh');
+            if (!Array.isArray(listData) || !input) return false;
+            const raw = String(name || '').trim().toLowerCase();
+            if (!raw) return false;
+            const match = listData.find(item => item.name.trim().toLowerCase() === raw);
+            if (!match) return false; // không khớp chính xác → để người dùng tự chọn
+            input.value = match.code;
+            const dropdown = document.getElementById('ma-tinh-autocomplete');
+            if (dropdown) { dropdown.hidden = true; dropdown.innerHTML = ''; }
+            return true;
+        }
+
+        function fillFromExtraction(data) {
+            const fields = data.fields || {};
+            const filledIds = [];
+            let skipped = 0;
+
+            Object.keys(fields).forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (!isFieldOverwritable(el)) { skipped++; return; } // giữ dữ liệu người dùng đã gõ
+                el.value = fields[id];
+                el.classList.add('ai-filled');
+                filledIds.push(id);
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                if (el.tagName === 'SELECT') el.dispatchEvent(new Event('change', { bubbles: true }));
+                // Người dùng chỉnh tay sau này → bỏ tô vàng
+                el.addEventListener('input', function clearHl() {
+                    el.classList.remove('ai-filled');
+                    el.removeEventListener('input', clearHl);
+                }, { once: true });
+            });
+
+            // Tự chọn mã cảng từ tên cảng vừa điền (vd 'Cổ Lũy' → 'CLU')
+            if (filledIds.includes('ma_cang')) autoSelectMaCangCode(fields.ma_cang);
+            // Tự chọn mã ngành nghề từ nghề chính (vd 'Lưới vây' → 'SX')
+            if (filledIds.includes('ma_nganh_nghe')) autoSelectNganhNghe(fields.ma_nganh_nghe);
+
+            // Tỉnh thành: lấy tên tỉnh từ Địa chỉ chủ tàu → điền vào Tỉnh thành + tự chọn mã
+            const provName = (document.getElementById('owner_address_province')?.value || '').trim();
+            const tinhEl = document.getElementById('tinh_thanh');
+            if (provName && tinhEl && isFieldOverwritable(tinhEl)) {
+                tinhEl.value = provName;
+                tinhEl.classList.add('ai-filled');
+                filledIds.push('tinh_thanh');
+                // Khớp chính xác → ra mã; không khớp → mở gợi ý cho người dùng chọn
+                if (!autoSelectTinhThanh(provName)) {
+                    tinhEl.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            }
+
+            // Gộp địa chỉ chủ tàu (tỉnh/xã/thôn) → ô địa chỉ đầy đủ
+            if (typeof updateOwnerAddressRaw === 'function') updateOwnerAddressRaw();
+
+            // Thuyền trưởng là chủ tàu? (dựa vào AI so khớp tên)
+            const capToggle = document.getElementById('captain_is_owner');
+            lastAiToggle = { changed: false, prev: capToggle ? capToggle.checked : false };
+            if (capToggle && data.captain_is_owner === true && !capToggle.checked) {
+                capToggle.checked = true;
+                handleCaptainToggle(capToggle);
+                lastAiToggle.changed = true;
+            }
+
+            lastAiFilledIds = filledIds;
+            ['sec-ship', 'sec-owner', 'sec-captain'].forEach(openSectionExpanded);
+            return { filled: filledIds.length, skipped };
+        }
+
+        function undoAiFill() {
+            lastAiFilledIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                // Khôi phục giá trị mặc định của form (ô số tàu mặc định "0", còn lại "")
+                if (el.tagName === 'SELECT') {
+                    el.value = Array.from(el.options).find(o => o.defaultSelected)?.value ?? '';
+                } else {
+                    el.value = el.defaultValue || '';
+                }
+                el.classList.remove('ai-filled');
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                if (el.tagName === 'SELECT') el.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            if (lastAiToggle.changed) {
+                const capToggle = document.getElementById('captain_is_owner');
+                if (capToggle) {
+                    capToggle.checked = lastAiToggle.prev;
+                    handleCaptainToggle(capToggle);
+                    // Xoá dữ liệu thuyền trưởng đã copy khi bật toggle
+                    ['captain_name', 'captain_phone', 'captain_cccd', 'captain_gender',
+                        'captain_birthday', 'captain_fax', 'captain_address'].forEach(cid => {
+                            const c = document.getElementById(cid);
+                            if (c && !c.disabled) c.value = '';
+                        });
+                }
+            }
+            if (typeof updateOwnerAddressRaw === 'function') updateOwnerAddressRaw();
+            lastAiFilledIds = [];
+            lastAiToggle = { changed: false, prev: false };
+            setExtractStatus('↶ Đã hoàn tác các trường AI vừa điền.', '');
+        }
+
+        // ── Captcha BCCS: poll → hiện modal → người dùng nhập → tool điền vào SFive ──
+        let captchaPollTimer = null;
+        let currentCaptchaId = null;
+
+        function startCaptchaPolling() {
+            stopCaptchaPolling(true);
+            captchaPollTimer = setInterval(pollCaptchaOnce, 1500);
+        }
+
+        function stopCaptchaPolling(keepModal) {
+            if (captchaPollTimer) { clearInterval(captchaPollTimer); captchaPollTimer = null; }
+            currentCaptchaId = null;
+            if (!keepModal) document.getElementById('captcha-modal')?.classList.remove('open');
+        }
+
+        async function pollCaptchaOnce() {
+            try {
+                const r = await fetch('/api/bccs/captcha');
+                const d = await r.json();
+                if (d && d.id && d.image) {
+                    if (d.id !== currentCaptchaId) showCaptchaModal(d.id, d.image, d.test_mode);
+                } else if (currentCaptchaId) {
+                    // Không còn captcha chờ (đã xử lý xong) → ẩn modal
+                    currentCaptchaId = null;
+                    document.getElementById('captcha-modal')?.classList.remove('open');
+                }
+            } catch { /* server bận trả run-automation — bỏ qua nhịp này */ }
+        }
+
+        function showCaptchaModal(id, image, testMode) {
+            currentCaptchaId = id;
+            document.getElementById('captcha-image').src = image;
+            const codeEl = document.getElementById('captcha-code');
+            codeEl.value = '';
+            document.getElementById('captcha-status').textContent =
+                testMode ? '🧪 TEST: tool sẽ điền vào SFive nhưng KHÔNG bấm Đấu nối.' : '';
+            document.getElementById('captcha-modal').classList.add('open');
+            setTimeout(() => codeEl.focus(), 100);
+        }
+
+        async function submitCaptcha() {
+            const id = currentCaptchaId;
+            if (!id) return;
+            const code = document.getElementById('captcha-code').value.trim();
+            const statusEl = document.getElementById('captcha-status');
+            if (!code) { statusEl.textContent = 'Vui lòng nhập mã xác nhận.'; return; }
+            statusEl.textContent = 'Đang gửi mã vào SFive...';
+            try {
+                await fetch('/api/bccs/captcha', {
+                    method: 'POST', headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ id, code }),
+                });
+            } catch { /* bỏ qua */ }
+            currentCaptchaId = null;
+            document.getElementById('captcha-modal').classList.remove('open');
+            // Nếu mã sai, poller sẽ nhận captcha mới và mở lại modal.
+        }
+
+        async function reloadCaptcha() {
+            const id = currentCaptchaId;
+            if (!id) return;
+            document.getElementById('captcha-status').textContent = 'Đang đổi mã...';
+            try {
+                await fetch('/api/bccs/captcha/reload', {
+                    method: 'POST', headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ id }),
+                });
+            } catch { /* bỏ qua */ }
+            currentCaptchaId = null; // để poller nhận ảnh mới và cập nhật
+        }
+
         // ── MAIN: Run Automation ─────────────────────────────────────────────────────
         async function runAutomation() {
             clearErrors();
@@ -3064,8 +3624,12 @@
             document.getElementById('result-panel').classList.remove('visible');
             setLoadingState(true);
 
-            // Timeout 4 phút — khớp với request_timeout của server (3 phút automation + buffer)
-            const FETCH_TIMEOUT_MS = 4 * 60 * 1000;
+            // Nếu chạy BCCS → bật poll captcha để hiện modal cho người dùng nhập
+            const bccsOn = getAutomationOptions().run_bccs;
+            if (bccsOn) startCaptchaPolling();
+
+            // Timeout 11 phút — luồng BCCS có thể chờ người dùng nhập captcha (server để 12 phút)
+            const FETCH_TIMEOUT_MS = 11 * 60 * 1000;
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
@@ -3106,6 +3670,7 @@
                 }
             } finally {
                 clearTimeout(timeoutId);
+                stopCaptchaPolling();
                 setLoadingState(false);
             }
         }
@@ -3450,6 +4015,8 @@
                 { name: "Vận chuyển nguồn lợi thủy sản đánh bắt", code: "1140" },
             ];
 
+            window.__NGANH_NGHE = NGANH_NGHE; // bộc lộ để AI tự khớp mã ngành nghề
+
             const input = document.getElementById('ma_nganh_nghe');
 
             // Tạo portal element động
@@ -3629,6 +4196,8 @@
                 { name: "Đảo Nam Du", code: "DND" },
             ];
 
+            window.__MA_CANG = MA_CANG; // bộc lộ để validate mã cảng hợp lệ
+
             const input = document.getElementById('ma_cang');
 
             const list = document.createElement('ul');
@@ -3746,6 +4315,8 @@
                 { name: "Vĩnh Long", code: "VL" },
                 { name: "Biển Đông", code: "BĐo" },
             ];
+
+            window.__MA_TINH = MA_TINH; // bộc lộ để AI tự khớp mã tỉnh
 
             const input = document.getElementById('tinh_thanh');
 
