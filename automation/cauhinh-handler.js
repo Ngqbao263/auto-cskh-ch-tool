@@ -675,6 +675,11 @@ async function fillField(page, fieldKey, fieldConfig, masterData, formKey) {
     await executeAction(page, fieldConfig, masterData);
   } catch (err) {
     const label = fieldConfig.label_vi || fieldKey;
+    // Field optional: điền được thì tốt, không thấy ô cũng không phá luồng.
+    if (fieldConfig.optional) {
+      console.warn(`  ⚠️  Bỏ qua "${label}" (optional) — ${err.message}`);
+      return;
+    }
     console.error(`\n  ❌ LỖI field "${label}" (${formKey}): ${err.message}`);
     await screenshotOnError(page, `${formKey}_${fieldKey}`);
     throw new Error(

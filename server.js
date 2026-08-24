@@ -30,16 +30,17 @@ require("dotenv").config({ path: appPath(".env") }); // Load .env sớm nhất c
 
 const express = require("express");
 const multer = require("multer");
-const { chromium } = require("playwright");
 
 const { createClient } = require("@supabase/supabase-js");
-const { insertCSKH } = require("./automation/cskh-db-handler"); // DB insert
-const { runCauhinh } = require("./automation/cauhinh-handler"); // Playwright Viettel
-const { runBCCS } = require("./automation/bccs-handler"); // Playwright BCCS
+const {
+  runAutomation,
+  formatSkippedResult,
+} = require("./automation/run-automation"); // orchestrator dùng chung (HTTP + worker)
 const {
   extractFromImages,
 } = require("./automation/image-extract-handler"); // AI đọc ảnh giấy tờ
 const captchaBridge = require("./automation/captcha-bridge"); // captcha BCCS ↔ giao diện
+const billingBridge = require("./automation/billing-bridge"); // sửa Địa chỉ hóa đơn cước ↔ giao diện
 
 // Supabase client dùng cho các API nhẹ (search, lookup) — không phải automation
 const _supabaseUrl = (process.env.SUPABASE_URL || "")
@@ -75,10 +76,12 @@ const CONFIG = {
   //          true  → Playwright điền form nhưng KHÔNG click Lưu, gọi page.pause()
   //                  Browser luôn hiện khi cauhinh test_mode = true
   // ──────────────────────────────────────────────────────────────────────────
+  // Đọc từ .env để đổi test/thật KHÔNG cần build lại (chỉ cần sửa .env + khởi động lại).
+  // true = chạy nháp (điền hết nhưng KHÔNG lưu/đấu nối). Mặc định: BCCS nháp, CSKH/Viettel thật.
   test_mode: {
-    cskh: false, // false = Chạy thật (Ghi vào Supabase)
-    cauhinh: false, // true  = Chạy nháp (Không click Lưu Viettel)
-    bccs: true, // true  = Chạy nháp (Không click Lưu BCCS)
+    cskh: /^true$/i.test(process.env.CSKH_TEST_MODE || "false"),
+    cauhinh: /^true$/i.test(process.env.CAUHINH_TEST_MODE || "false"),
+    bccs: /^true$/i.test(process.env.BCCS_TEST_MODE || "true"),
   },
 };
 
@@ -181,48 +184,7 @@ function validateMasterData(data) {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPER: Format kết quả từ Promise.allSettled
-// ─────────────────────────────────────────────────────────────────────────────
-function formatSettledResult(settledResult, label) {
-  if (settledResult.status === "fulfilled") {
-    const val = settledResult.value ?? {};
-    if (val.success === false) {
-      return {
-        success: false,
-        duration_ms: val.duration_ms ?? null,
-        test_mode: val.test_mode ?? false,
-        error: val.error || "Lỗi không xác định.",
-        message: val.message || `${label} thất bại.`,
-      };
-    }
-    const isTest = val.test_mode ?? false;
-    // Hiển thị connection_id + payment_id nếu có (từ RPC create_connection_record)
-    const extra = val.inserted_id
-      ? `  (Connection ID: ${val.inserted_id}${
-          val.payment_id ? ` | Payment ID: ${val.payment_id}` : ""
-        })`
-      : "";
-    return {
-      success: true,
-      duration_ms: val.duration_ms ?? null,
-      test_mode: isTest,
-      manual_handoff: val.manual_handoff ?? false,
-      inserted_id: val.inserted_id ?? undefined,
-      payment_id: val.payment_id ?? undefined,
-      message:
-        val.message ||
-        (isTest
-          ? `${label} hoàn tất (TEST MODE — chưa lưu DB thật).`
-          : `${label} hoàn tất thành công.${extra}`),
-    };
-  }
-  return {
-    success: false,
-    error: settledResult.reason?.message ?? "Lỗi không xác định.",
-    message: `${label} thất bại.`,
-  };
-}
+// (formatSettledResult / formatSkippedResult đã chuyển sang automation/run-automation.js)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API: POST /api/login
@@ -350,6 +312,7 @@ app.post(
     );
     const startTime = Date.now();
     captchaBridge.clear(); // dọn phiên captcha cũ (nếu có) trước khi chạy
+    billingBridge.clear(); // dọn phiên sửa địa chỉ cũ (nếu có)
 
     // masterData gửi lên dưới dạng JSON string trong multipart field "masterData"
     let masterData;
@@ -413,211 +376,28 @@ app.post(
       `   Chủ tàu: ${masterData.owner_name} | Chế độ: ${CONFIG.run_mode}`
     );
 
-    // ── Trích test mode từng hệ thống ────────────────────────────────────────
-    const testModeCskh = CONFIG.test_mode.cskh;
-    const testModeCauhinh = CONFIG.test_mode.cauhinh;
-    const testModeBccs = CONFIG.test_mode.bccs;
-    const automationOptions = masterData.automation_options || {};
-    const runCskh =
-      automationOptions.run_cskh !== undefined
-        ? automationOptions.run_cskh !== false
-        : automationOptions.run_main_flow !== false;
-    const runViettel =
-      automationOptions.run_cauhinh !== undefined
-        ? automationOptions.run_cauhinh !== false
-        : automationOptions.run_main_flow !== false;
-    const runBccs = automationOptions.run_bccs !== false;
-
-    if (!runCskh && !runViettel && !runBccs) {
-      _uploadedPaths.forEach((p) => {
-        try {
-          fs.unlinkSync(p);
-        } catch {
-          /* bỏ qua */
-        }
-      });
-      return res.status(400).json({
-        success: false,
-        error: "Vui lòng bật ít nhất một luồng cần chạy.",
-        results: {
-          cskh: formatSkippedResult("CSKH"),
-          cauhinh: formatSkippedResult("Cấu hình Viettel"),
-          bccs: formatSkippedResult("BCCS"),
-        },
-      });
-    }
-
-    // ── Log trạng thái test mode ──────────────────────────────────────────────
-    console.log(
-      `   CSKH:     ${
-        testModeCskh
-          ? "🧪 TEST (dry-run, không insert DB)"
-          : "🟢 THẬT (ghi vào Supabase)"
-      }`
-    );
-    console.log(
-      `   Cấu hình: ${
-        testModeCauhinh
-          ? "🧪 TEST (không click Lưu Viettel)"
-          : "🟢 THẬT (lưu vào Viettel DB)"
-      }`
-    );
-    console.log(
-      `   BCCS:     ${
-        testModeBccs
-          ? "🧪 TEST (không click Lưu BCCS)"
-          : "🟢 THẬT (lưu vào BCCS)"
-      }`
-    );
-    console.log(
-      `   Luồng bật: ${[
-        runCskh ? "CSKH" : "",
-        runViettel ? "Viettel" : "",
-        runBccs ? "BCCS" : "",
-      ]
-        .filter(Boolean)
-        .join(", ")}`
-    );
-    console.log("═".repeat(60));
-
-    let browser;
-    let results = {
-      cskh: runCskh ? null : formatSkippedResult("CSKH"),
-      cauhinh: runViettel ? null : formatSkippedResult("Cấu hình Viettel"),
-      bccs: runBccs ? null : formatSkippedResult("BCCS"),
-    };
-
+    // ── Chạy automation qua orchestrator dùng chung ──────────────────────────
+    // captcha bỏ trống → BCCS dùng cầu nối localhost (ảnh hiện lên giao diện tool).
+    let results;
     try {
-      let pageCauhinh = null;
-      let cauhinhInitError = null;
+      const outcome = await runAutomation(masterData, {
+        config: {
+          headless: CONFIG.headless,
+          slowMo: CONFIG.slowMo,
+          run_mode: CONFIG.run_mode,
+        },
+        testMode: CONFIG.test_mode,
+      });
 
-      if (runViettel) {
-        const effectiveHeadless = testModeCauhinh ? false : CONFIG.headless;
-        try {
-          browser = await chromium.launch({
-            headless: effectiveHeadless,
-            slowMo: CONFIG.slowMo,
-            args: ["--no-sandbox", "--disable-setuid-sandbox"],
-          });
-          console.log(
-            `\n🌐 Browser khởi động (headless=${effectiveHeadless}) — dùng cho Viettel`
-          );
-
-          const context = await browser.newContext({
-            viewport: { width: 1440, height: 900 },
-            locale: "vi-VN",
-            timezoneId: "Asia/Ho_Chi_Minh",
-            ignoreHTTPSErrors: true,
-          });
-          context.setDefaultTimeout(30_000);
-          pageCauhinh = await context.newPage();
-          console.log(`\n📑 Đã tạo tab Playwright cho Viettel.`);
-        } catch (err) {
-          cauhinhInitError = err;
-          results.cauhinh = {
-            success: false,
-            error: `Không thể khởi động browser Viettel: ${err.message}`,
-            message: "Cấu hình thất bại.",
-          };
-          console.error(
-            "❌ Không thể khởi động Playwright cho Viettel:",
-            err.message
-          );
-        }
-      } else {
-        console.log(`\n⏭️  Bỏ qua Viettel theo lựa chọn người dùng.`);
-      }
-
-      if (CONFIG.run_mode === "parallel") {
-        const tasks = [];
-        if (runCskh) {
-          tasks.push({
-            key: "cskh",
-            label: "CSKH",
-            fn: () => insertCSKH(masterData, testModeCskh),
-          });
-        }
-        if (runViettel) {
-          if (!cauhinhInitError && pageCauhinh) {
-            tasks.push({
-              key: "cauhinh",
-              label: "Cấu hình",
-              fn: () => runCauhinh(pageCauhinh, masterData, testModeCauhinh),
-            });
-          }
-        }
-        if (runBccs) {
-          tasks.push({
-            key: "bccs",
-            label: "BCCS",
-            fn: () => runBCCS(masterData, testModeBccs),
-          });
-        }
-
-        console.log(
-          `\n⚡ Chế độ SONG SONG: chạy ${tasks
-            .map((t) => t.label)
-            .join(" + ")}\n`
-        );
-        const settled = await Promise.allSettled(
-          tasks.map((task) => task.fn())
-        );
-        settled.forEach((settledResult, index) => {
-          const task = tasks[index];
-          results[task.key] = formatSettledResult(settledResult, task.label);
+      if (outcome.ranNothing) {
+        return res.status(400).json({
+          success: false,
+          error: "Vui lòng bật ít nhất một luồng cần chạy.",
+          results: outcome.results,
         });
-      } else {
-        console.log(`\n🔁 Chế độ TUẦN TỰ theo các luồng đã bật\n`);
-        if (runCskh) {
-          const [cskhSettled] = await Promise.allSettled([
-            insertCSKH(masterData, testModeCskh),
-          ]);
-          results.cskh = formatSettledResult(cskhSettled, "CSKH");
-        }
-
-        if (runViettel && !cauhinhInitError && pageCauhinh) {
-          const [cauhinhSettled] = await Promise.allSettled([
-            runCauhinh(pageCauhinh, masterData, testModeCauhinh),
-          ]);
-          results.cauhinh = formatSettledResult(cauhinhSettled, "Cấu hình");
-        }
-        if (runBccs) {
-          const [bccsSettled] = await Promise.allSettled([
-            runBCCS(masterData, testModeBccs),
-          ]);
-          results.bccs = formatSettledResult(bccsSettled, "BCCS");
-        }
       }
-    } catch (err) {
-      console.error("❌ Lỗi không mong muốn:", err.message);
-      results = {
-        cskh: runCskh
-          ? {
-              success: false,
-              error: "Lỗi hệ thống: " + err.message,
-              message: "CSKH thất bại.",
-            }
-          : formatSkippedResult("CSKH"),
-        cauhinh: runViettel
-          ? {
-              success: false,
-              error: "Lỗi hệ thống: " + err.message,
-              message: "Cấu hình thất bại.",
-            }
-          : formatSkippedResult("Cấu hình Viettel"),
-        bccs: runBccs
-          ? {
-              success: false,
-              error: "Lỗi hệ thống: " + err.message,
-              message: "BCCS thất bại.",
-            }
-          : formatSkippedResult("BCCS"),
-      };
+      results = outcome.results;
     } finally {
-      if (browser) {
-        await browser.close();
-        console.log("\n🔒 Browser đã đóng.");
-      }
       // Xoá file upload tạm sau khi automation xong
       _uploadedPaths.forEach((p) => {
         try {
@@ -644,9 +424,9 @@ app.post(
 
     console.log("\n" + "═".repeat(60));
     const testSuffix = [
-      testModeCskh ? "CSKH🧪" : "",
-      testModeCauhinh ? "Viettel🧪" : "",
-      testModeBccs ? "BCCS🧪" : "",
+      CONFIG.test_mode.cskh ? "CSKH🧪" : "",
+      CONFIG.test_mode.cauhinh ? "Viettel🧪" : "",
+      CONFIG.test_mode.bccs ? "BCCS🧪" : "",
     ]
       .filter(Boolean)
       .join(" ");
@@ -690,9 +470,9 @@ app.post(
       partial_success: partialSuccess,
       test_mode: CONFIG.test_mode, // { cskh: bool, cauhinh: bool }
       automation_options: {
-        run_cskh: runCskh,
-        run_cauhinh: runViettel,
-        run_bccs: runBccs,
+        run_cskh: !results.cskh.skipped,
+        run_cauhinh: !results.cauhinh.skipped,
+        run_bccs: !results.bccs.skipped,
       },
       results,
       total_duration_ms: totalDuration,
@@ -912,15 +692,6 @@ function parseLegacyAddress(address) {
   };
 }
 
-function formatSkippedResult(label) {
-  return {
-    success: true,
-    skipped: true,
-    duration_ms: null,
-    message: `${label} đã bỏ qua theo lựa chọn người dùng.`,
-  };
-}
-
 function convertAddressLocal({ address, province, district, ward }) {
   const parsed = parseLegacyAddress(address);
   const oldProvince = normalizeAddressText(province || parsed.province);
@@ -1084,6 +855,23 @@ app.post("/api/bccs/captcha/reload", (req, res) => {
   res.json({ ok });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// BILLING (sửa Địa chỉ hóa đơn cước — master form)
+//   GET  /api/bccs/billing  → { id, value } | { none:true }
+//   POST /api/bccs/billing  → { id, value } gửi địa chỉ đã sửa
+// ─────────────────────────────────────────────────────────────────────────────
+app.get("/api/bccs/billing", (_req, res) => {
+  const pending = billingBridge.getPending();
+  res.json(pending || { none: true });
+});
+
+app.post("/api/bccs/billing", (req, res) => {
+  const { id, value } = req.body ?? {};
+  if (!id) return res.status(400).json({ ok: false, error: "Thiếu id." });
+  const ok = billingBridge.answer(id, value);
+  res.json({ ok });
+});
+
 app.get("/api/logs", (_req, res) => {
   try {
     const files = fs
@@ -1119,6 +907,57 @@ app.get("/api/config", (_req, res) => {
     run_mode: CONFIG.run_mode,
     headless: CONFIG.headless,
   });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API: GET /api/scrape-vas-address
+// Quét Tỉnh/Huyện/Xã (mã VAS) từ F9 địa chỉ KH của SFive → tải về file JSON.
+// Chạy TRÊN MÁY SFIVE: mở 1 job BCCS test (SFive mở, tới captcha), mở modal
+// "Địa chỉ" của khách hàng, rồi mở URL này trong trình duyệt của máy SFive.
+// ─────────────────────────────────────────────────────────────────────────────
+app.get("/api/scrape-vas-address", async (req, res) => {
+  const { scrapeVasAddress } = require("./automation/scrape-vas");
+  const outPath = appPath("logs", "vas-address.json");
+  // Quét 4 cấp có thể ~30-60 phút → bỏ timeout request; ghi đĩa dần sau mỗi tỉnh.
+  try { req.setTimeout(0); res.setTimeout(0); if (req.socket) req.socket.setTimeout(0); } catch {}
+
+  const countG = (p) =>
+    (p.districts || []).reduce((a, d) => a + (d.wards || []).reduce((x, w) => x + (w.groupStreets ? w.groupStreets.length : 0), 0), 0);
+  const countW = (p) => (p.districts || []).reduce((a, d) => a + (d.wards ? d.wards.length : 0), 0);
+
+  try {
+    console.log(`\n🗺️  [scrape-vas] Bắt đầu quét 4 cấp (Tỉnh→Huyện→Xã→Tổ/thôn) — có thể ~30-60 phút.`);
+    console.log(`   Ghi dần vào: ${outPath}`);
+    // RESUME: đọc file cũ (nếu có) để chỉ quét tỉnh còn thiếu.
+    let existing = [];
+    try {
+      if (fs.existsSync(outPath)) {
+        const prev = JSON.parse(fs.readFileSync(outPath, "utf8"));
+        if (prev && Array.isArray(prev.provinces)) existing = prev.provinces;
+        if (existing.length) console.log(`   ♻️  Đã có ${existing.length} tỉnh trong file — chỉ quét phần còn thiếu.`);
+      }
+    } catch (e) { console.warn("   ⚠️ đọc file cũ lỗi:", e.message); }
+
+    const data = await scrapeVasAddress({
+      existing,
+      onProvince: (out, idx, total) => {
+        try { fs.writeFileSync(outPath, JSON.stringify(out, null, 2), "utf8"); } catch (e) { console.warn("  ⚠️ ghi file lỗi:", e.message); }
+        const p = out.provinces[out.provinces.length - 1];
+        console.log(`🗺️  [scrape-vas] ${idx}/${total} ${p.name}: huyện ${(p.districts || []).length}, xã ${countW(p)}, tổ/thôn ${countG(p)}`);
+      },
+    });
+    fs.writeFileSync(outPath, JSON.stringify(data, null, 2), "utf8");
+    const provs = data.provinces || [];
+    const nDist = provs.reduce((s, p) => s + (p.districts ? p.districts.length : 0), 0);
+    const nWard = provs.reduce((s, p) => s + countW(p), 0);
+    const nGrp = provs.reduce((s, p) => s + countG(p), 0);
+    console.log(`🗺️  [scrape-vas] XONG → ${outPath}`);
+    console.log(`   Tỉnh ${provs.length} | Huyện ${nDist} | Xã ${nWard} | Tổ/thôn ${nGrp}`);
+    res.json({ success: true, file: outPath, provinces: provs.length, districts: nDist, wards: nWard, groupStreets: nGrp });
+  } catch (err) {
+    console.error("❌ [scrape-vas] Lỗi:", err.message);
+    if (!res.headersSent) res.status(500).json({ error: err.message, file_partial: outPath });
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1180,3 +1019,31 @@ ${
   // qua giao diện (tối đa ~5 phút) nên cần dài hơn để không cắt kết nối giữa chừng.
   server.setTimeout(12 * 60 * 1000);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WORKER MODE — nhận job remote từ Supabase (hub/điện thoại) và chạy automation.
+// Bật bằng WORKER_ENABLED=true trong .env. Máy này vẫn phục vụ web local như cũ.
+// ─────────────────────────────────────────────────────────────────────────────
+if (String(process.env.WORKER_ENABLED || "").toLowerCase() === "true") {
+  if (!supabase) {
+    console.error(
+      "❌ [worker] WORKER_ENABLED=true nhưng thiếu SUPABASE_URL/SERVICE_ROLE_KEY — bỏ qua worker."
+    );
+  } else {
+    const { start: startWorker } = require("./automation/worker");
+    const machineId = process.env.MACHINE_ID || "PC-01";
+    startWorker({
+      supabase,
+      config: {
+        headless: CONFIG.headless,
+        slowMo: CONFIG.slowMo,
+        run_mode: CONFIG.run_mode,
+      },
+      testMode: CONFIG.test_mode,
+      machineId,
+      label: process.env.MACHINE_LABEL || machineId,
+      uploadsDir: UPLOADS_DIR,
+      pollMs: Number(process.env.WORKER_POLL_MS) || 3000,
+    });
+  }
+}

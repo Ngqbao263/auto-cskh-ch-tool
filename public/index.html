@@ -455,6 +455,69 @@
             color: var(--danger);
         }
 
+        /* Danh sách nhiều ảnh/PDF chờ gộp */
+        .merge-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            margin-top: 0.4rem;
+        }
+
+        .merge-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.4rem;
+            background: var(--navy-800);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: grab;
+        }
+
+        .merge-item.dragging {
+            opacity: 0.4;
+        }
+
+        .merge-item .drag-h {
+            color: var(--text-3);
+            flex-shrink: 0;
+        }
+
+        .merge-item img,
+        .merge-item .pdf-ic {
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            object-fit: cover;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--navy-700);
+        }
+
+        .merge-item .m-name {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .merge-item .m-del {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-3);
+            flex-shrink: 0;
+            padding: 0 0.2rem;
+        }
+
+        .merge-item .m-del:hover {
+            color: var(--danger);
+        }
+
         .docs-note {
             margin-top: 0.75rem;
             font-size: 0.73rem;
@@ -1688,6 +1751,18 @@
             </div>
             <div class="section-body">
 
+                <!-- Danh mục phiếu (CSKH → p_category) -->
+                <div class="form-grid">
+                    <div class="field-group">
+                        <label for="category">Danh mục <span class="req">*</span></label>
+                        <select id="category">
+                            <option value="Đấu mới">Đấu mới</option>
+                            <option value="Chuyển đổi">Thay tên đổi chủ</option>
+                            <option value="Chuyển nhượng">Chuyển nhượng</option>
+                        </select>
+                    </div>
+                </div>
+
                 <!-- Row: Mã tàu + Serial -->
                 <div class="form-grid cols-2">
                     <div class="field-group">
@@ -1866,7 +1941,7 @@
                     <div class="field-group">
                         <label for="owner_phone">SĐT chủ tàu <span class="req">*</span></label>
                         <input type="text" id="owner_phone" placeholder="VD: 0901234567" required data-required="true"
-                            oninput="syncEmail('owner_phone')" />
+                            oninput="syncField('owner_phone','owner_fax'); syncEmail('owner_phone')" />
                     </div>
                     <div class="field-group">
                         <label for="owner_phone_2">SĐT thứ 2</label>
@@ -2143,28 +2218,30 @@
 
                     <!-- Hợp đồng -->
                     <div class="field-group">
-                        <label>Hợp đồng <span class="hint">PDF / JPG / PNG</span></label>
+                        <label>Hợp đồng <span class="hint">nhiều ảnh/PDF → tự gộp 1 PDF</span></label>
                         <div class="file-row">
-                            <label class="file-btn" for="file_hop_dong">📂 Chọn file</label>
-                            <input type="file" id="file_hop_dong" accept=".pdf,.jpg,.jpeg,.png"
-                                onchange="showFileName(this)">
+                            <label class="file-btn" for="file_hop_dong">📂 Chọn ảnh/PDF</label>
+                            <input type="file" id="file_hop_dong" accept=".pdf,.jpg,.jpeg,.png" multiple
+                                onchange="handleMergeSelect(this, 'hop_dong')">
                             <span class="file-name" id="file_hop_dong_name">Chưa chọn</span>
-                            <button type="button" class="file-clear" title="Xoá"
-                                onclick="clearFile('file_hop_dong')">✕</button>
+                            <button type="button" class="file-clear" title="Xoá hết"
+                                onclick="clearMergeList('file_hop_dong')">✕</button>
                         </div>
+                        <div class="merge-list" id="file_hop_dong_list"></div>
                     </div>
 
                     <!-- Phụ lục hợp đồng -->
                     <div class="field-group">
-                        <label>Phụ lục hợp đồng <span class="hint">PDF / JPG / PNG</span></label>
+                        <label>Phụ lục hợp đồng <span class="hint">nhiều ảnh/PDF → tự gộp 1 PDF</span></label>
                         <div class="file-row">
-                            <label class="file-btn" for="file_phu_luc">📂 Chọn file</label>
-                            <input type="file" id="file_phu_luc" accept=".pdf,.jpg,.jpeg,.png"
-                                onchange="showFileName(this)">
+                            <label class="file-btn" for="file_phu_luc">📂 Chọn ảnh/PDF</label>
+                            <input type="file" id="file_phu_luc" accept=".pdf,.jpg,.jpeg,.png" multiple
+                                onchange="handleMergeSelect(this, 'phu_luc')">
                             <span class="file-name" id="file_phu_luc_name">Chưa chọn</span>
-                            <button type="button" class="file-clear" title="Xoá"
-                                onclick="clearFile('file_phu_luc')">✕</button>
+                            <button type="button" class="file-clear" title="Xoá hết"
+                                onclick="clearMergeList('file_phu_luc')">✕</button>
                         </div>
+                        <div class="merge-list" id="file_phu_luc_list"></div>
                     </div>
 
                     <!-- Ô trống để giữ căn cột -->
@@ -2306,6 +2383,26 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="billing-modal">
+        <div class="modal-box" style="max-width: 520px;">
+            <div class="modal-head">
+                <div class="modal-title">🧾 Sửa "Địa chỉ hóa đơn cước" (BCCS)</div>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:0.8rem;color:var(--text-2);margin-bottom:0.75rem;">
+                    Kiểm tra/sửa địa chỉ in trên hóa đơn rồi bấm <strong>Xác nhận</strong> — tool điền lại vào SFive rồi tiếp tục.
+                </p>
+                <textarea id="billing-value" rows="3" placeholder="Địa chỉ hóa đơn cước"
+                    style="width:100%;resize:vertical;"
+                    onkeydown="if(event.key==='Enter'&&event.ctrlKey){event.preventDefault();submitBilling();}"></textarea>
+                <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:1rem;">
+                    <button type="button" class="btn-extract" style="width:auto;padding:0.5rem 1.2rem;"
+                        onclick="submitBilling()">Xác nhận</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="help-modal" onclick="closeHelpModal(event)">
         <div class="modal-box">
             <div class="modal-head">
@@ -2361,6 +2458,7 @@
     <!-- ─────────────────────────────────────────────────────────────────────────
      JAVASCRIPT
 ────────────────────────────────────────────────────────────────────────── -->
+    <script src="vendor/pdf-lib.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             updateRunOptionsText();
@@ -2918,6 +3016,8 @@
             };
 
             return {
+                // Danh mục phiếu (CSKH → p_category)
+                category: g('category') || 'Đấu mới',
                 // Ship info
                 ship_code: g('ship_code'),
                 serial_number: g('serial_number'),
@@ -3113,24 +3213,53 @@
         });
 
         function validateForm(data) {
-            const requiredFields = [...BASE_REQUIRED_FIELDS];
+            // Ràng buộc bắt buộc theo LUỒNG được tích (hợp của các luồng).
+            const opt = data.automation_options || {};
+            const req = new Map(); // id -> label (tự dedupe)
+            const add = (arr) => arr.forEach(([id, label]) => { if (!req.has(id)) req.set(id, label); });
 
-            if (!data.requester_is_owner) {
-                requiredFields.push(
-                    ['requester_name', 'Tên người yêu cầu'],
-                    ['requester_phone', 'SĐT người yêu cầu'],
-                );
+            const SHIP_GROUP = [
+                ['ship_code', 'Mã tàu'], ['serial_number', 'Serial Number'], ['bien_so_tau', 'Biển số tàu'],
+                ['ma_nganh_nghe', 'Mã ngành nghề'], ['ma_cang', 'Mã cảng'], ['ma_cang_phu', 'Mã cảng phụ'],
+                ['tinh_thanh', 'Tỉnh thành'], ['tong_tai_trong', 'Tổng tải trọng'], ['chieu_dai_toan_bo', 'Chiều dài toàn bộ'],
+                ['chieu_rong', 'Chiều rộng'], ['cong_suat', 'Công suất'], ['tan_so_vhf', 'Tần số VHF'],
+                ['tan_so_hf', 'Tần số HF'], ['so_di_dong', 'Số di động'],
+            ];
+            const OWNER_GROUP = [
+                ['owner_name', 'Tên chủ tàu'], ['owner_phone', 'SĐT chủ tàu'], ['owner_cccd', 'CCCD chủ tàu'],
+                ['owner_loai_ma_so', 'Loại mã số chủ tàu'], ['issue_date', 'Ngày cấp CCCD'], ['issue_place', 'Nơi cấp CCCD'],
+                ['vessel_owner_gender', 'Giới tính chủ tàu'], ['owner_fax', 'Số Fax chủ tàu'], ['owner_email', 'Email chủ tàu'],
+                ['owner_birthday', 'Ngày sinh chủ tàu'],
+            ];
+            const ADDR_GROUP = [
+                ['owner_address_province', 'Tỉnh/TP chủ tàu'], ['owner_address_district', 'Quận/Huyện chủ tàu'],
+                ['owner_address_precinct', 'Phường/Xã chủ tàu'], ['owner_address_group_street', 'Tổ/Thôn chủ tàu'],
+                ['owner_address_street', 'Địa chỉ chủ tàu'],
+            ];
+
+            if (opt.run_cskh) {
+                add([['category', 'Danh mục'], ['ship_code', 'Mã tàu'], ['serial_number', 'Serial Number'], ['bien_so_tau', 'Biển số tàu'],
+                     ['owner_name', 'Tên chủ tàu'], ['owner_phone', 'SĐT chủ tàu'], ['owner_cccd', 'CCCD chủ tàu']]);
+                add(ADDR_GROUP);
+                add([['so_thang', 'Số tháng']]);
+                if (!data.requester_is_owner) add([['requester_name', 'Tên người yêu cầu'], ['requester_phone', 'SĐT người yêu cầu']]);
+            }
+            if (opt.run_cauhinh) {
+                add(SHIP_GROUP);
+                add([['owner_name', 'Tên chủ tàu'], ['owner_cccd', 'CCCD chủ tàu'], ['owner_birthday', 'Ngày sinh chủ tàu'], ['owner_phone', 'SĐT chủ tàu']]);
+                add(ADDR_GROUP);
+                if (!data.captain_is_owner) add([['captain_name', 'Tên thuyền trưởng'], ['captain_phone', 'SĐT thuyền trưởng'],
+                    ['captain_cccd', 'CCCD thuyền trưởng'], ['captain_birthday', 'Ngày sinh thuyền trưởng'], ['captain_address', 'Địa chỉ thuyền trưởng']]);
+            }
+            if (opt.run_bccs) {
+                add([['ship_code', 'Mã tàu'], ['serial_number', 'Serial Number'], ['bien_so_tau', 'Biển số tàu']]);
+                add(OWNER_GROUP);
+                add(ADDR_GROUP);
+                add([['so_thang', 'Số tháng']]);
+                // 5 file hồ sơ do validateBccsDocuments() lo riêng.
             }
 
-            if (!data.captain_is_owner) {
-                requiredFields.push(
-                    ['captain_name', 'Tên thuyền trưởng'],
-                    ['captain_phone', 'SĐT thuyền trưởng'],
-                    ['captain_cccd', 'CCCD thuyền trưởng'],
-                    ['captain_address', 'Địa chỉ thuyền trưởng'],
-                    ['captain_fax', 'Số Fax thuyền trưởng'],
-                );
-            }
+            const requiredFields = Array.from(req.entries());
 
             let firstInvalidElement = null;
             let invalidCount = 0;
@@ -3150,6 +3279,7 @@
                 ['tinh_thanh', 'Tỉnh thành', window.__MA_TINH],
             ];
             CODE_FIELDS.forEach(([id, label, list]) => {
+                if (!req.has(id)) return; // chỉ kiểm mã hợp lệ với field đang bắt buộc
                 const el = document.getElementById(id);
                 if (!el || el.disabled) return;
                 const val = String(el.value || '').trim();
@@ -3289,6 +3419,158 @@
         function clearFile(inputId) {
             const input = document.getElementById(inputId);
             if (input) { input.value = ''; showFileName(input); }
+        }
+
+        // ── Gộp nhiều ảnh/PDF thành 1 PDF (Hợp đồng / Phụ lục) ─────────────────────────
+        // Giữ danh sách file gốc theo id input; kết quả gộp gán ngược vào input.files
+        // để phần validate + FormData phía sau dùng như 1 file bình thường.
+        const MERGE_MAX_DIM = 2000;
+        const MERGE_JPEG_Q = 0.82;
+        const mergeState = {};   // { file_hop_dong: [File,...], file_phu_luc: [...] }
+        const mergeToken = {};   // chống race khi đổi nhanh
+        let mergeDragId = null, mergeDragIdx = null;
+
+        function isPdfFile(f) {
+            return f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+        }
+
+        async function imageToJpegBytes(file) {
+            const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+            let w = bitmap.width, h = bitmap.height;
+            const scale = Math.min(1, MERGE_MAX_DIM / Math.max(w, h));
+            w = Math.round(w * scale); h = Math.round(h * scale);
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+            ctx.drawImage(bitmap, 0, 0, w, h);
+            bitmap.close();
+            const blob = await new Promise((res, rej) =>
+                canvas.toBlob(b => b ? res(b) : rej(new Error('toBlob lỗi')), 'image/jpeg', MERGE_JPEG_Q));
+            return new Uint8Array(await blob.arrayBuffer());
+        }
+
+        async function mergeFilesToPdf(files, outName) {
+            const out = await PDFLib.PDFDocument.create();
+            for (const file of files) {
+                if (isPdfFile(file)) {
+                    const src = await PDFLib.PDFDocument.load(new Uint8Array(await file.arrayBuffer()));
+                    const pages = await out.copyPages(src, src.getPageIndices());
+                    pages.forEach(p => out.addPage(p));
+                } else {
+                    const img = await out.embedJpg(await imageToJpegBytes(file));
+                    const page = out.addPage([img.width, img.height]);
+                    page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+                }
+            }
+            const bytes = await out.save();
+            const name = outName.endsWith('.pdf') ? outName : outName + '.pdf';
+            return new File([bytes], name, { type: 'application/pdf' });
+        }
+
+        function setInputFile(input, file) {
+            const dt = new DataTransfer();
+            if (file) dt.items.add(file);
+            input.files = dt.files;
+        }
+
+        function renderMergeList(id) {
+            const wrap = document.getElementById(id + '_list');
+            if (!wrap) return;
+            const list = mergeState[id] || [];
+            wrap.innerHTML = '';
+            list.forEach((file, idx) => {
+                const item = document.createElement('div');
+                item.className = 'merge-item';
+                item.draggable = true;
+                item.addEventListener('dragstart', () => { mergeDragId = id; mergeDragIdx = idx; item.classList.add('dragging'); });
+                item.addEventListener('dragend', () => item.classList.remove('dragging'));
+                item.addEventListener('dragover', e => e.preventDefault());
+                item.addEventListener('drop', e => { e.preventDefault(); dropMergeItem(id, idx); });
+
+                const grip = document.createElement('span');
+                grip.className = 'drag-h'; grip.textContent = '⋮⋮';
+                item.appendChild(grip);
+
+                if (isPdfFile(file)) {
+                    const ic = document.createElement('span');
+                    ic.className = 'pdf-ic'; ic.textContent = '📄';
+                    item.appendChild(ic);
+                } else {
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.onload = () => URL.revokeObjectURL(img.src);
+                    item.appendChild(img);
+                }
+
+                const nm = document.createElement('span');
+                nm.className = 'm-name'; nm.textContent = file.name; nm.title = file.name;
+                item.appendChild(nm);
+
+                const del = document.createElement('button');
+                del.type = 'button'; del.className = 'm-del'; del.textContent = '✕'; del.title = 'Xoá';
+                del.onclick = () => removeMergeItem(id, idx);
+                item.appendChild(del);
+
+                wrap.appendChild(item);
+            });
+        }
+
+        function dropMergeItem(id, targetIdx) {
+            if (mergeDragId !== id || mergeDragIdx === null || mergeDragIdx === targetIdx) { mergeDragIdx = null; return; }
+            const list = mergeState[id];
+            const [moved] = list.splice(mergeDragIdx, 1);
+            list.splice(targetIdx, 0, moved);
+            mergeDragIdx = null;
+            renderMergeList(id);
+            rebuildMerged(id);
+        }
+
+        function removeMergeItem(id, idx) {
+            (mergeState[id] || []).splice(idx, 1);
+            renderMergeList(id);
+            rebuildMerged(id);
+        }
+
+        function clearMergeList(id) {
+            mergeState[id] = [];
+            const input = document.getElementById(id);
+            if (input) { setInputFile(input, null); showFileName(input); }
+            renderMergeList(id);
+            if (typeof updateDocsRequiredState === 'function') updateDocsRequiredState();
+        }
+
+        function handleMergeSelect(input, outBase) {
+            const id = input.id;
+            input._outBase = outBase;
+            if (!mergeState[id]) mergeState[id] = [];
+            Array.from(input.files || []).forEach(f => mergeState[id].push(f));
+            input.value = ''; // cho phép chọn lại cùng file & để append lần sau
+            renderMergeList(id);
+            rebuildMerged(id);
+        }
+
+        async function rebuildMerged(id) {
+            const input = document.getElementById(id);
+            const nameEl = document.getElementById(id + '_name');
+            const list = mergeState[id] || [];
+            const outBase = input?._outBase || id;
+
+            if (list.length === 0) { setInputFile(input, null); showFileName(input); return; }
+            if (list.length === 1) { setInputFile(input, list[0]); showFileName(input); return; }
+
+            const token = (mergeToken[id] = (mergeToken[id] || 0) + 1);
+            if (nameEl) { nameEl.textContent = 'Đang gộp ' + list.length + ' file...'; nameEl.classList.add('has-file'); }
+            try {
+                const merged = await mergeFilesToPdf(list, outBase);
+                if (token !== mergeToken[id]) return; // đã có lần gộp mới hơn
+                setInputFile(input, merged);
+                showFileName(input);
+                if (nameEl) { nameEl.textContent = list.length + ' file → 1 PDF'; nameEl.title = merged.name; }
+            } catch (e) {
+                console.error('[merge] lỗi gộp PDF:', e);
+                if (token === mergeToken[id] && nameEl) nameEl.textContent = '⚠ Gộp lỗi, thử lại';
+            }
         }
 
         // Copy ảnh CCCD (khu AI) xuống ô CCCD tương ứng trong "Hồ sơ đính kèm",
@@ -3534,16 +3816,21 @@
         // ── Captcha BCCS: poll → hiện modal → người dùng nhập → tool điền vào SFive ──
         let captchaPollTimer = null;
         let currentCaptchaId = null;
+        let currentBillingId = null;
 
         function startCaptchaPolling() {
             stopCaptchaPolling(true);
-            captchaPollTimer = setInterval(pollCaptchaOnce, 1500);
+            captchaPollTimer = setInterval(() => { pollCaptchaOnce(); pollBillingOnce(); }, 1500);
         }
 
         function stopCaptchaPolling(keepModal) {
             if (captchaPollTimer) { clearInterval(captchaPollTimer); captchaPollTimer = null; }
             currentCaptchaId = null;
-            if (!keepModal) document.getElementById('captcha-modal')?.classList.remove('open');
+            currentBillingId = null;
+            if (!keepModal) {
+                document.getElementById('captcha-modal')?.classList.remove('open');
+                document.getElementById('billing-modal')?.classList.remove('open');
+            }
         }
 
         async function pollCaptchaOnce() {
@@ -3600,6 +3887,42 @@
                 });
             } catch { /* bỏ qua */ }
             currentCaptchaId = null; // để poller nhận ảnh mới và cập nhật
+        }
+
+        // ── BILLING: sửa Địa chỉ hóa đơn cước ────────────────────────────────────────
+        async function pollBillingOnce() {
+            try {
+                const r = await fetch('/api/bccs/billing');
+                const d = await r.json();
+                if (d && d.id && d.value !== undefined) {
+                    if (d.id !== currentBillingId) showBillingModal(d.id, d.value, d.test_mode);
+                } else if (currentBillingId) {
+                    currentBillingId = null;
+                    document.getElementById('billing-modal')?.classList.remove('open');
+                }
+            } catch { /* bỏ qua nhịp này */ }
+        }
+
+        function showBillingModal(id, value, testMode) {
+            currentBillingId = id;
+            const el = document.getElementById('billing-value');
+            el.value = value || '';
+            document.getElementById('billing-modal').classList.add('open');
+            setTimeout(() => el.focus(), 100);
+        }
+
+        async function submitBilling() {
+            const id = currentBillingId;
+            if (!id) return;
+            const value = document.getElementById('billing-value').value.trim();
+            try {
+                await fetch('/api/bccs/billing', {
+                    method: 'POST', headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ id, value }),
+                });
+            } catch { /* bỏ qua */ }
+            currentBillingId = null;
+            document.getElementById('billing-modal').classList.remove('open');
         }
 
         // ── MAIN: Run Automation ─────────────────────────────────────────────────────

@@ -176,7 +176,7 @@ async function insertCSKH(masterData, testMode = false) {
     p_promotion_value: promotionType !== "none" ? promotionValue : null,
     p_monthly_price: DEFAULT_MONTHLY_PRICE,
     p_payment_snapshot: paymentSnapshot,
-    p_category: "Đấu mới",
+    p_category: masterData.category || "Đấu mới",
     p_type_fee: "S-Tracking",
     p_created_by: masterData.user_id ?? CREATE_BY,
     p_assigned_to: masterData.user_id ?? CREATE_BY,

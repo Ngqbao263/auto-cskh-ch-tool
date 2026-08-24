@@ -19,7 +19,14 @@
       "Bash(node -e \"require\\('./automation/bccs-handler.js'\\); console.log\\('bccs OK'\\)\")",
       "Bash(node -e \"require\\('./server.js'\\)\")",
       "Bash(node --check automation/bccs-handler.js)",
-      "Bash(node --check server.js)"
+      "Bash(node --check server.js)",
+      "Read(//d/SDVICO/csku-tasker-hub/**)",
+      "Bash(npx tsc *)",
+      "Bash(npm i *)",
+      "Bash(mkdir -p \"/d/SDVICO/auto-cskh ch-tool/public/vendor\" && cp /d/SDVICO/csku-tasker-hub/node_modules/pdf-lib/dist/pdf-lib.min.js \"/d/SDVICO/auto-cskh ch-tool/public/vendor/pdf-lib.min.js\" && ls -la \"/d/SDVICO/auto-cskh ch-tool/public/vendor/\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\(p.pkg||p.bin||{},null,1\\)\\)\")",
+      "PowerShell($c = Get-NetTCPConnection -LocalPort 4123 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { Stop-Process -Id $c.OwningProcess -Force; \"stopped $\\($c.OwningProcess\\)\" } else { \"not running\" })",
+      "Bash(cd \"/d/SDVICO/auto-cskh ch-tool\" && find supabase -type f 2>/dev/null; echo \"---HUB---\"; find /d/SDVICO/csku-tasker-hub/supabase -type f 2>/dev/null | head -60)"
     ]
   }
 }

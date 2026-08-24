@@ -37,6 +37,7 @@ const path                    = require("path");
 const fs                      = require("fs");
 const { spawn, execSync }     = require("child_process");
 const captchaBridge           = require("./captcha-bridge"); // cầu nối captcha ↔ giao diện tool
+const billingBridge           = require("./billing-bridge"); // cầu nối sửa Địa chỉ hóa đơn cước ↔ giao diện
 let CDP;
 
 // â”€â”€â”€ Mock Mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -102,6 +103,7 @@ const SEL_ISSUE_PLACE     = '[id="connectForm:j_idt108:mainCustomertxtPlaceIss"]
 const SEL_ISSUE_DATE      = '[id="connectForm:j_idt108:mainCustomercldDate_input"]';
 const SEL_OWNER_NAME      = '[id="connectForm:j_idt108:mainCustomertxtHoten"]';
 const SEL_BIRTHDAY        = '[id="connectForm:j_idt108:mainCustomercldDOB_input"]';
+const SEL_EXPIRE_DATE     = '[id$="mainCustomerexpireCldDate_input"]'; // Ngày hết hạn
 const SEL_GENDER_NAM      = '[id="connectForm:j_idt108:mainCustomersorGender:0"]';
 const SEL_GENDER_NU       = '[id="connectForm:j_idt108:mainCustomersorGender:1"]';
 
@@ -132,6 +134,7 @@ const SUBGOODS_SUPPLY_TEXT  = "Bán đứt";
 
 // â”€â”€â”€ Selectors â€” ThÃ´ng tin thanh toÃ¡n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Dùng khớp đuôi [id$="..."] để miễn nhiễm với j_idt#### tự sinh (đã đổi 1904→1906).
+const SEL_BILLING_ADDR  = '[id$="svAccountInfo:txtAddressNoticeCharge"]'; // Địa chỉ hóa đơn cước
 const SEL_BILL_CYCLE    = '[id$="svAccountInfo:cbxViewBillCycle_input"]';
 const SEL_PAY_METHOD    = '[id$="svAccountInfo:cbxViewPayMethod_input"]';
 const SEL_NOTICE_CHARGE = '[id$="svAccountInfo:cbxViewNoticeCharge_input"]';
@@ -144,6 +147,19 @@ const SEL_PHONE_2       = 'input[title="Số điện thoại thứ 2"], input[da
 // Selector địa chỉ dùng KHỚP ĐUÔI [id$="..."] / [class*="..."] để miễn nhiễm với
 // phần j_idt#### tự sinh của PrimeFaces (đã đổi 1724→1726 trên trang thật).
 const ADDRESS_POPUPS = {
+  // Dia chi khach hang (Thong tin KH) - modal giong dia chi lap dat.
+  customer: {
+    label: "Dia chi KH",
+    openInput: '[id$="input_for_address_mainCustomertxtAdd_txt"]',
+    openFunction: "reload_mainCustomertxtAdd_location",
+    province: '[id$="mainCustomertxtAddprovince_input"]',
+    district: '[id$="mainCustomertxtAdddistrict_input"]',
+    precinct: '[id$="mainCustomertxtAddprecinct_input"]',
+    groupStreet: '[id$="mainCustomertxtAddgroupStreet_input"]',
+    // Chỉ điền Tỉnh/Huyện/Xã/Tổ-thôn — KHÔNG điền Đường/phố (street) & Số nhà.
+    saveButton: '[class*="mainCustomertxtAddbtnSumitLocation"]',
+    dialog: '[id$="pnAddressmainCustomertxtAdd"]',
+  },
   install: {
     label: "Dia chi lap dat",
     openInput: '[id$="input_for_address_txtDeploymentAddressSip_txt2"]',
@@ -164,6 +180,7 @@ const ADDRESS_POPUPS = {
     precinct: '[id$="txtAccAddressXmttprecinct_input"]',
     groupStreet: '[id$="txtAccAddressXmttgroupStreet_input"]',
     street: '[id$="txtAccAddressXmttstreetPro"]',
+    noApartment: '[id$="txtAccAddressXmttnoApartment"]',
     saveButton: '[class*="txtAccAddressXmttbtnSumitLocation"]',
     dialog: '[class*="txtAccAddressXmttdlgLocation"]',
   },
@@ -193,8 +210,11 @@ const DOCUMENT_SLOTS = [
 const SEL_CAPTCHA_INPUT  = '[id="connectForm:capcha:capcha1"], input[data-p-label="Mã xác nhận"], input.acapchapinputCaptcha';
 const SEL_CAPTCHA_IMG    = '[id="connectForm:capcha:captchaImg"]';
 const SEL_CAPTCHA_RELOAD = '.fcapcha, [id="connectForm:capcha:j_idt5320"], [id="connectForm:capcha:j_idt5329"]';
-const SEL_BTN_DAU_NOI   = '[id="connectForm:buttonDoConnectId:j_idt5328"]';
-const SEL_BTN_DONG_Y    = '[id="connectForm:buttonDoConnectId:j_idt5363"]';
+// Miễn nhiễm j_idt#### tự sinh: khớp tiền tố id ổn định + class đặc trưng của từng nút.
+//  - Đấu nối:  class .w210 (nút chính)
+//  - Đồng ý:   class .yesButtoncfDoConnectPanel (nút xác nhận trong panel)
+const SEL_BTN_DAU_NOI   = '[id^="connectForm:buttonDoConnectId:"].w210';
+const SEL_BTN_DONG_Y    = '[id^="connectForm:buttonDoConnectId:"].yesButtoncfDoConnectPanel';
 
 // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -827,7 +847,13 @@ async function fillBccsAddressPopup(page, config, address) {
     await safeFill(page, config.street, address.street);
   }
   if (config.noApartment && address.noApartment) {
-    await safeFill(page, config.noApartment, address.noApartment);
+    // Không bắt buộc — selector Số nhà có thể khác; lỗi thì cảnh báo, không phá luồng.
+    try {
+      await safeFill(page, config.noApartment, address.noApartment);
+      console.log(`    ✅ Số nhà: ${address.noApartment}`);
+    } catch (e) {
+      console.warn(`    ⚠️  Không điền được Số nhà (${config.noApartment}): ${e.message}`);
+    }
   }
 
   await pressKey(page, "F8");
@@ -855,7 +881,8 @@ async function verifyAddressPopupElements(page, config) {
     ["precinct", config.precinct],
     ["groupStreet", config.groupStreet],
     ...(config.street ? [["street", config.street]] : []),
-    ...(config.noApartment ? [["noApartment", config.noApartment]] : []),
+    // noApartment (Số nhà) KHÔNG bắt buộc — selector có thể khác giữa popup
+    // billing/billingNew; thiếu thì bỏ qua, không chặn cả luồng.
     ["saveButton", config.saveButton],
   ];
 
@@ -978,19 +1005,34 @@ function splitStreetAndHouseNo(value) {
 
 function buildOwnerAddressForBccs(masterData, { useShipCodeAsStreet = false } = {}) {
   const streetParts = splitStreetAndHouseNo(masterData.owner_address_street);
-  const billingStreet = String(masterData.owner_address_road || "").trim() || masterData.ship_code;
-  const address = {
+  const road = String(masterData.owner_address_road || "").trim();
+  const shipCode = String(masterData.ship_code || "").trim();
+
+  let street, noApartment;
+  if (useShipCodeAsStreet) {
+    // Địa chỉ XM/TBC — Mã tàu luôn có mặt:
+    //  - KHÔNG có tên Đường → Đường/phố = Mã tàu, Số nhà để trống.
+    //  - CÓ tên Đường       → Đường/phố = tên đường, Số nhà = Mã tàu.
+    if (road) {
+      street = road;
+      noApartment = shipCode;
+    } else {
+      street = shipCode;
+      noApartment = "";
+    }
+  } else {
+    street = streetParts.street;
+    noApartment = streetParts.noApartment;
+  }
+
+  return {
     province: masterData.owner_address_province,
     district: masterData.owner_address_district,
     precinct: masterData.owner_address_precinct,
     groupStreet: masterData.owner_address_group_street,
-    street: useShipCodeAsStreet
-      ? billingStreet
-      : streetParts.street,
-    noApartment: useShipCodeAsStreet ? "" : streetParts.noApartment,
+    street,
+    noApartment,
   };
-
-  return address;
 }
 
 function hasRequiredBccsAddress(address, { requireDistrict = false } = {}) {
@@ -1012,6 +1054,7 @@ async function fillDatePicker(page, selector, ddmmyyyy) {
 
   await page.waitForSelector(selector, { timeout: 10000 });
   // Set value trá»±c tiáº¿p qua JS â€” trÃ¡nh bug typeText vá»›i PrimeFaces datepicker
+  // Gõ từng số bị mask xáo trộn thứ tự → set value đúng rồi ĐÓNG lịch (không che field khác).
   await page.evaluate(`
     (function() {
       const el = document.querySelector(${JSON.stringify(selector)});
@@ -1019,7 +1062,9 @@ async function fillDatePicker(page, selector, ddmmyyyy) {
       el.value = ${JSON.stringify(formatted)};
       el.dispatchEvent(new Event('input',  { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
-      el.dispatchEvent(new Event('blur',   { bubbles: true }));
+      try { if (window.jQuery && window.jQuery.datepicker) window.jQuery.datepicker._hideDatepicker(); } catch (e) {}
+      el.blur();
+      document.body.click();
     })()
   `);
   await sleep(T.after_fill);
@@ -1233,6 +1278,13 @@ async function fillCustomerSection(page, masterData) {
       } catch {
         await page.selectOption(SEL_ID_TYPE, { index: cccd.length === 9 ? 1 : 2 });
       }
+      // Chọn Loại giấy tờ vừa render lại → XÓA ô CCCD. Chờ AJAX rồi gõ lại số CCCD.
+      try {
+        await sleep(T.ajax_wait);
+        await page.typeSlowly(SEL_ID_NUMBER, cccd);
+      } catch (e) {
+        console.warn(`    ⚠️  Gõ lại số CCCD thất bại: ${e.message}`);
+      }
     } catch (err) {
       console.warn(`    âš ï¸  Loáº¡i giáº¥y tá» â€” tháº¥t báº¡i: ${err.message}`);
     }
@@ -1248,8 +1300,11 @@ async function fillCustomerSection(page, masterData) {
   // NÆ¡i cáº¥p
   const NOI_CAP_DEFAULT = "Cá»¥c TrÆ°á»Ÿng CCS QLHC Vá» Tráº­t Tá»± XÃ£ Há»™i";
   const noiCap = masterData.issue_place || NOI_CAP_DEFAULT;
+  // Ngày cấp có onchange render lại ô Nơi cấp (@([id$=mainCustomertxtPlaceIss]))
+  // → chờ AJAX xong rồi mới điền, tránh bị ghi đè trống.
+  await sleep(T.ajax_wait);
   console.log(`    â€¢ NÆ¡i cáº¥p: "${noiCap}"`);
-  try { await safeFill(page, SEL_ISSUE_PLACE, noiCap); }
+  try { await sleep(30); /* Nơi cấp điền ở cuối hàm */ }
   catch (err) { console.warn(`    âš ï¸  NÆ¡i cáº¥p â€” tháº¥t báº¡i: ${err.message}`); }
 
   // TÃªn khÃ¡ch hÃ ng
@@ -1267,6 +1322,19 @@ async function fillCustomerSection(page, masterData) {
   }
 
   // Giá»›i tÃ­nh
+  // Ngày hết hạn = Ngày sinh + 100 năm (vd 26/03/2004 → 26/03/2104).
+  if (masterData.owner_birthday) {
+    const parts = String(masterData.owner_birthday).split(/\D+/).filter(Boolean);
+    if (parts.length === 3 && parts[2].length === 4) {
+      const dd = parts[0].padStart(2, "0");
+      const mm = parts[1].padStart(2, "0");
+      const expire = `${dd}/${mm}/${parseInt(parts[2], 10) + 100}`;
+      console.log(`    • Ngày hết hạn: ${expire}`);
+      try { await fillDatePicker(page, SEL_EXPIRE_DATE, expire); }
+      catch (err) { console.warn(`    ⚠️  Ngày hết hạn — thất bại: ${err.message}`); }
+    }
+  }
+
   const gender = String(masterData.vessel_owner_gender || "").toUpperCase();
   if (gender === "T" || gender === "G") {
     const sel = gender === "T" ? SEL_GENDER_NAM : SEL_GENDER_NU;
@@ -1277,7 +1345,23 @@ async function fillCustomerSection(page, masterData) {
     } catch (err) { console.warn(`    âš ï¸  Giá»›i tÃ­nh â€” tháº¥t báº¡i: ${err.message}`); }
   }
 
-  console.log(`    â­ï¸  Äá»‹a chá»‰ KH â€” Bá»Ž QUA (sáº½ xá»­ lÃ½ sau).`);
+  // Noi cap: DIEN CUOI CUNG (sau Ngay cap/Ngay sinh) de khong bi AJAX render lai xoa.
+  await sleep(T.ajax_wait);
+  console.log(`    • Nơi cấp (điền cuối): "${noiCap}"`);
+  try { await safeFill(page, SEL_ISSUE_PLACE, noiCap); }
+  catch (e) { console.warn(`    ⚠️  Nơi cấp — thất bại: ${e.message}`); }
+
+  // Dia chi khach hang — mo modal + dien (giong dia chi lap dat). Loi thi log, khong chan luong.
+  try {
+    const ownerAddr = buildOwnerAddressForBccs(masterData);
+    if (hasRequiredBccsAddress(ownerAddr, { requireDistrict: false })) {
+      await fillBccsAddressPopup(page, ADDRESS_POPUPS.customer, ownerAddr);
+    } else {
+      console.log(`    Dia chi KH — thieu du lieu, bo qua.`);
+    }
+  } catch (e) {
+    console.warn(`    Dia chi KH — that bai: ${e.message}`);
+  }
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -1771,29 +1855,132 @@ async function waitConnectSuccess(page, timeout = 30000) {
   return false;
 }
 
+// Gọn nội dung lỗi: gộp khoảng trắng, bỏ mã hash tương quan đầu dòng.
+// Bắt cả 2 format:
+//   "[a64a36cd5ee68a2c] null - [SALE2511] ..." → "[SALE2511] ..."
+//   "[fc81d452e35d3c08] Số điện thoại ..."      → "Số điện thoại ..."
+function cleanErrorText(s) {
+  if (!s) return "";
+  let t = String(s).replace(/\s+/g, " ").trim();
+  t = t.replace(/^\[[0-9a-f]{6,}\]\s*(null\s*-\s*)?/i, "");
+  return t;
+}
+
+// Đọc lỗi PrimeFaces SFive hiện khi đấu nối lỗi. Bắt cả 2 dạng:
+//   - Message tĩnh: .ui-messages-error-detail / .ui-message-error-detail (vd SALE2511)
+//   - Growl (tự ẩn sau vài giây): .ui-growl-item.error (vd "SĐT ... phải là số di động")
+// Trả chuỗi lỗi đã gọn (nhiều lỗi nối bằng " | ") hoặc "" nếu không có.
+async function readSubmitError(page) {
+  const parts = await page.evaluate(`
+    (function(){
+      var out = [], seen = {};
+      function push(t){ t=(t||'').replace(/\\s+/g,' ').trim(); if(t && !seen[t]){ seen[t]=1; out.push(t); } }
+      document.querySelectorAll('.ui-messages-error-detail, .ui-message-error-detail')
+        .forEach(function(el){ push(el.innerText || el.textContent); });
+      document.querySelectorAll('.ui-growl-item.error .ui-growl-message, .ui-growl-item.ui-growl-message-error .ui-growl-message')
+        .forEach(function(el){ push(el.innerText || el.textContent); });
+      return out;
+    })()
+  `).catch(() => []);
+  const cleaned = (parts || []).map(cleanErrorText).filter(Boolean);
+  return [...new Set(cleaned)].join(" | ");
+}
+
+// Chờ kết quả đấu nối: hoặc dialog thành công, hoặc lỗi (message/growl) hiện → thoát sớm.
+async function waitConnectOutcome(page, timeout = 30000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    const res = await page.evaluate(`
+      (function(){
+        var dlg = document.querySelector('[id="connectForm:dlgConnectInfor"]');
+        var okShown = !!dlg && window.getComputedStyle(dlg).display !== 'none';
+        var errEl = document.querySelector('.ui-messages-error-detail, .ui-message-error-detail, .ui-growl-item.error .ui-growl-message');
+        var errText = errEl ? (errEl.innerText || errEl.textContent || '') : '';
+        return { ok: okShown, err: errText };
+      })()
+    `).catch(() => ({ ok: false, err: "" }));
+    if (res.ok) return { ok: true };
+    if (res.err && res.err.trim()) {
+      const full = await readSubmitError(page);
+      return { ok: false, error: full || cleanErrorText(res.err) };
+    }
+    await sleep(500);
+  }
+  return { ok: false };
+}
+
 // Bàn giao captcha qua giao diện tool: chụp ảnh → chờ nhân viên nhập → điền vào SFive.
 // testMode=true: điền captcha vào SFive nhưng KHÔNG bấm Đấu nối (chạy nháp).
-async function handleCaptchaViaBridge(page, testMode) {
+// Bàn giao "Địa chỉ hóa đơn cước" để người dùng sửa TRƯỚC captcha.
+// billing(currentValue) => Promise<{ value }>. Bỏ trống → dùng cầu nối localhost.
+async function handleBillingViaBridge(page, testMode, billing) {
+  let current = "";
+  try {
+    current = await page.evaluate(
+      `(document.querySelector(${JSON.stringify(SEL_BILLING_ADDR)}) || {}).value || ''`
+    );
+  } catch {}
+  if (!current) {
+    console.log(`  ℹ️  [BCCS] Địa chỉ hóa đơn cước rỗng — bỏ qua bước sửa.`);
+    return;
+  }
+  console.log(`  📤 [BCCS] Bàn giao "Địa chỉ hóa đơn cước" để sửa: "${current}"`);
+
+  const ask =
+    billing ||
+    (async (v) => {
+      const res = await billingBridge.waitForBilling({ value: v, testMode }, 3 * 60 * 1000);
+      return { value: res && res.value != null ? res.value : v };
+    });
+
+  let res;
+  try { res = await ask(current); } catch (e) { console.warn(`  ⚠️  [BCCS] Sửa địa chỉ lỗi: ${e.message}`); return; }
+  const finalVal = res && res.value != null ? String(res.value) : current;
+
+  if (finalVal.trim() && finalVal !== current) {
+    try {
+      await safeFill(page, SEL_BILLING_ADDR, finalVal);
+      console.log(`  ✅ [BCCS] Đã điền lại địa chỉ hóa đơn cước đã sửa.`);
+    } catch (e) {
+      console.warn(`  ⚠️  [BCCS] Điền lại địa chỉ lỗi: ${e.message}`);
+    }
+  } else {
+    console.log(`  ✅ [BCCS] Giữ nguyên địa chỉ hóa đơn cước.`);
+  }
+}
+
+async function handleCaptchaViaBridge(page, testMode, captcha) {
   console.log(`\n  🔐 [BCCS] Bàn giao captcha qua giao diện tool${testMode ? " (TEST — không bấm Đấu nối)" : ""}...`);
   const DEADLINE = Date.now() + 5 * 60 * 1000; // tổng 5 phút cho cả quá trình
+  let round = 0;
+
+  // captcha callback được tiêm từ ngoài (worker remote). Bỏ trống → dùng cầu nối
+  // localhost mặc định (khi chạy trực tiếp trên PC): ảnh hiện lên giao diện tool.
+  const askCaptcha =
+    captcha ||
+    (async (image) => {
+      const res = await captchaBridge.waitForCaptcha({ image, testMode }, 3 * 60 * 1000);
+      return { action: res.type, code: res.code };
+    });
 
   while (Date.now() < DEADLINE) {
     const image = await captureCaptchaImage(page);
     if (!image) return { done: false, submitted: false, reason: "no-image" };
 
-    const res = await captchaBridge.waitForCaptcha({ image, testMode }, 3 * 60 * 1000);
+    round += 1;
+    const res = await askCaptcha(image, round);
 
-    if (res.type === "timeout" || res.type === "cancel") {
-      console.warn(`  ⏱  Kết thúc chờ captcha (${res.type}).`);
-      return { done: false, submitted: false, reason: res.type };
+    if (res.action === "timeout" || res.action === "cancel") {
+      console.warn(`  ⏱  Kết thúc chờ captcha (${res.action}).`);
+      return { done: false, submitted: false, reason: res.action };
     }
-    if (res.type === "reload") {
+    if (res.action === "reload") {
       console.log(`  🔄 Người dùng bấm Đổi mã captcha.`);
       await clickReloadCaptcha(page);
       continue;
     }
 
-    // res.type === 'answer'
+    // res.action === 'answer'
     console.log(`  ⌨️  Nhận mã captcha từ giao diện → điền vào SFive.`);
     await typeCaptcha(page, res.code);
 
@@ -1813,12 +2000,28 @@ async function handleCaptchaViaBridge(page, testMode) {
       continue;
     }
 
+    // Lỗi validate/nghiệp vụ có thể hiện ngay sau Đấu nối (message hoặc growl tự ẩn)
+    // → dừng, trả lỗi. Poll vài lần vì growl có thể hiện trễ một chút.
+    let earlyErr = "";
+    for (let i = 0; i < 6 && !earlyErr; i++) {
+      earlyErr = await readSubmitError(page);
+      if (!earlyErr) await sleep(400);
+    }
+    if (earlyErr) {
+      console.warn(`  ❌ [BCCS] SFive báo lỗi (sau Đấu nối): ${earlyErr}`);
+      return { done: true, submitted: true, failed: true, errorText: earlyErr };
+    }
+
     // Bấm Đồng ý (nếu có dialog xác nhận) rồi chờ dialog kết quả
     try { await safeClick(page, SEL_BTN_DONG_Y, { wait: T.ajax_wait }); } catch {}
-    const ok = await waitConnectSuccess(page, 30000);
-    if (ok) {
+    const outcome = await waitConnectOutcome(page, 30000);
+    if (outcome.ok) {
       console.log(`  🎉 [BCCS] Đấu nối thành công!`);
       return { done: true, submitted: true };
+    }
+    if (outcome.error) {
+      console.warn(`  ❌ [BCCS] SFive báo lỗi: ${outcome.error}`);
+      return { done: true, submitted: true, failed: true, errorText: outcome.error };
     }
     // Không thấy dialog thành công: có thể vẫn sai mã hoặc lỗi khác
     if (await isCaptchaWrong(page)) { await clickReloadCaptcha(page); continue; }
@@ -1866,7 +2069,8 @@ async function submitForm(page) {
  * @param {object}  masterData
  * @param {boolean} [testMode=false] â€” true: dá»«ng trÆ°á»›c Submit (nháº¥n Enter Ä‘á»ƒ káº¿t thÃºc)
  */
-async function runBCCS(masterData, testMode = false) {
+async function runBCCS(masterData, testMode = false, opts = {}) {
+  const { captcha = null, billing = null } = opts;
   const startTime = Date.now();
   let cdpClient;
   let keepSFiveOpen = false;
@@ -1915,12 +2119,28 @@ async function runBCCS(masterData, testMode = false) {
     await fillDocumentSection(page, masterData);
 
     // â”€â”€ Captcha + Submit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    const capResult = await handleCaptchaViaBridge(page, testMode);
+    // Bàn giao sửa "Địa chỉ hóa đơn cước" TRƯỚC captcha.
+    await handleBillingViaBridge(page, testMode, billing);
+
+    const capResult = await handleCaptchaViaBridge(page, testMode, captcha);
     keepSFiveOpen = !IS_MOCK_TEST;
 
     const duration = Date.now() - startTime;
     console.log(`\n  ⏱  [BCCS] Hoàn tất luồng trong ${(duration / 1000).toFixed(1)}s.`);
     console.log("â•".repeat(60) + "\n");
+    // SFive báo lỗi khi đấu nối (vd nợ cước) → trả success:false để hiện về hub/master form.
+    if (capResult.failed && capResult.errorText) {
+      return {
+        success: false,
+        duration_ms: duration,
+        test_mode: testMode,
+        manual_handoff: false,
+        captcha: capResult,
+        error: capResult.errorText,
+        message: `BCCS lỗi: ${capResult.errorText}`,
+      };
+    }
+
     let message;
     if (capResult.submitted) {
       message = capResult.unconfirmed

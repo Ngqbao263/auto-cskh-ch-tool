@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test gộp ảnh → PDF (Hợp đồng / Phụ lục)</title>
+<script src="public/vendor/pdf-lib.min.js"></script>
+<style>
+  body { font-family: system-ui, Arial, sans-serif; max-width: 760px; margin: 20px auto; padding: 0 16px; color: #1a2233; }
+  h1 { font-size: 1.25rem; }
+  .note { background: #eef4ff; border: 1px solid #cddffb; border-radius: 8px; padding: 10px 12px; font-size: .9rem; }
+  .field { border: 1px solid #d5dbe6; border-radius: 10px; padding: 14px; margin-top: 16px; }
+  .field h2 { font-size: 1rem; margin: 0 0 8px; }
+  .btn { display: inline-block; background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: .9rem; }
+  .btn.ghost { background: #eef1f6; color: #1a2233; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; background: #f5f7fb; border: 1px solid #e2e7f0; border-radius: 8px; cursor: grab; }
+  .item.dragging { opacity: .4; }
+  .item img, .item .ic { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; background: #dde3ee; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .85rem; }
+  .item .del { border: none; background: none; color: #94a0b8; cursor: pointer; font-size: 1rem; }
+  .item .del:hover { color: #dc2626; }
+  .status { font-size: .85rem; margin-top: 10px; min-height: 1.2em; }
+  .ok { color: #16a34a; font-weight: 600; }
+  .warn { color: #d97706; }
+</style>
+</head>
+<body>
+  <h1>Test gộp ảnh → PDF</h1>
+  <div class="note">
+    Đây là bản test dùng <b>đúng code</b> như 2 trường <b>Hợp đồng</b> và <b>Phụ lục</b> trong tool.<br>
+    Cách test: bấm <b>Chọn ảnh/PDF</b> → chọn <b>nhiều ảnh</b> (chụp hợp đồng/phụ lục) → kéo để đổi thứ tự nếu cần →
+    bấm <b>“Mở PDF đã gộp”</b>. Nếu ra <b>1 file PDF nhiều trang</b> đúng thứ tự là chuẩn.<br>
+    Quy tắc: <b>1 ảnh hoặc 1 PDF → giữ nguyên</b>; <b>nhiều file → gộp thành 1 PDF</b>.
+  </div>
+
+  <div class="field" id="f-hop_dong">
+    <h2>Hợp đồng</h2>
+    <div class="row">
+      <label class="btn">Chọn ảnh/PDF
+        <input type="file" accept=".pdf,.jpg,.jpeg,.png" multiple hidden onchange="onSelect('hop_dong', this)">
+      </label>
+      <button class="btn ghost" onclick="openMerged('hop_dong')">Mở PDF đã gộp</button>
+      <button class="btn ghost" onclick="clearAll('hop_dong')">Xoá hết</button>
+    </div>
+    <div class="list" id="list-hop_dong"></div>
+    <div class="status" id="status-hop_dong"></div>
+  </div>
+
+  <div class="field" id="f-phu_luc">
+    <h2>Phụ lục hợp đồng</h2>
+    <div class="row">
+      <label class="btn">Chọn ảnh/PDF
+        <input type="file" accept=".pdf,.jpg,.jpeg,.png" multiple hidden onchange="onSelect('phu_luc', this)">
+      </label>
+      <button class="btn ghost" onclick="openMerged('phu_luc')">Mở PDF đã gộp</button>
+      <button class="btn ghost" onclick="clearAll('phu_luc')">Xoá hết</button>
+    </div>
+    <div class="list" id="list-phu_luc"></div>
+    <div class="status" id="status-phu_luc"></div>
+  </div>
+
+<script>
+// ===== ĐÚNG code gộp như trong tool =====
+const MERGE_MAX_DIM = 2000, MERGE_JPEG_Q = 0.82;
+function isPdfFile(f){ return f.type==='application/pdf' || /\.pdf$/i.test(f.name); }
+async function imageToJpegBytes(file){
+  const bitmap = await createImageBitmap(file, { imageOrientation:'from-image' });
+  let w=bitmap.width,h=bitmap.height;
+  const scale=Math.min(1, MERGE_MAX_DIM/Math.max(w,h));
+  w=Math.round(w*scale); h=Math.round(h*scale);
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const ctx=c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h); ctx.drawImage(bitmap,0,0,w,h);
+  bitmap.close();
+  const blob=await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('toBlob')), 'image/jpeg', MERGE_JPEG_Q));
+  return new Uint8Array(await blob.arrayBuffer());
+}
+async function mergeFilesToPdf(files,outName){
+  const out=await PDFLib.PDFDocument.create();
+  for(const file of files){
+    if(isPdfFile(file)){
+      const src=await PDFLib.PDFDocument.load(new Uint8Array(await file.arrayBuffer()));
+      const pages=await out.copyPages(src, src.getPageIndices()); pages.forEach(p=>out.addPage(p));
+    } else {
+      const img=await out.embedJpg(await imageToJpegBytes(file));
+      const page=out.addPage([img.width,img.height]);
+      page.drawImage(img,{x:0,y:0,width:img.width,height:img.height});
+    }
+  }
+  const bytes=await out.save();
+  return new File([bytes], outName.endsWith('.pdf')?outName:outName+'.pdf', {type:'application/pdf'});
+}
+
+// ===== UI test =====
+const state = { hop_dong: [], phu_luc: [] };
+let dragKey=null, dragIdx=null;
+
+function onSelect(key, input){
+  Array.from(input.files||[]).forEach(f=>state[key].push(f));
+  input.value='';
+  render(key);
+  setStatus(key, state[key].length + ' file đang chờ. Bấm “Mở PDF đã gộp” để xem.');
+}
+function clearAll(key){ state[key]=[]; render(key); setStatus(key,''); }
+function removeItem(key, idx){ state[key].splice(idx,1); render(key); }
+function drop(key, target){
+  if(dragKey!==key || dragIdx===null || dragIdx===target){ dragIdx=null; return; }
+  const arr=state[key]; const [m]=arr.splice(dragIdx,1); arr.splice(target,0,m); dragIdx=null; render(key);
+}
+function setStatus(key, html, cls){ const el=document.getElementById('status-'+key); el.className='status '+(cls||''); el.innerHTML=html; }
+
+function render(key){
+  const wrap=document.getElementById('list-'+key); wrap.innerHTML='';
+  state[key].forEach((file,idx)=>{
+    const it=document.createElement('div'); it.className='item'; it.draggable=true;
+    it.ondragstart=()=>{dragKey=key;dragIdx=idx;it.classList.add('dragging');};
+    it.ondragend=()=>it.classList.remove('dragging');
+    it.ondragover=e=>e.preventDefault();
+    it.ondrop=e=>{e.preventDefault();drop(key,idx);};
+    const grip=document.createElement('span'); grip.textContent='⋮⋮'; grip.style.color='#94a0b8'; it.appendChild(grip);
+    if(isPdfFile(file)){ const ic=document.createElement('span'); ic.className='ic'; ic.textContent='📄'; it.appendChild(ic); }
+    else { const img=document.createElement('img'); img.src=URL.createObjectURL(file); img.onload=()=>URL.revokeObjectURL(img.src); it.appendChild(img); }
+    const nm=document.createElement('span'); nm.className='nm'; nm.textContent=file.name; it.appendChild(nm);
+    const del=document.createElement('button'); del.className='del'; del.textContent='✕'; del.onclick=()=>removeItem(key,idx); it.appendChild(del);
+    wrap.appendChild(it);
+  });
+}
+
+async function openMerged(key){
+  const list=state[key];
+  if(list.length===0){ setStatus(key,'Chưa chọn file nào.', 'warn'); return; }
+  setStatus(key,'Đang gộp...');
+  try{
+    let result;
+    if(list.length===1){ result=list[0]; }        // 1 file → giữ nguyên
+    else { result=await mergeFilesToPdf(list, key); } // nhiều → gộp
+    let pages='?';
+    if(isPdfFile(result)){
+      const d=await PDFLib.PDFDocument.load(new Uint8Array(await result.arrayBuffer()));
+      pages=d.getPageCount();
+    }
+    const kb=Math.round(result.size/1024);
+    const kind = list.length===1 ? 'giữ nguyên 1 file' : ('gộp '+list.length+' file → 1 PDF');
+    setStatus(key, '✔ '+kind+' — '+result.name+' ('+pages+' trang, '+kb+' KB). Đang mở...', 'ok');
+    window.open(URL.createObjectURL(result), '_blank');
+  }catch(e){
+    console.error(e);
+    setStatus(key, '⚠ Lỗi gộp: '+e.message, 'warn');
+  }
+}
+</script>
+</body>
+</html>
