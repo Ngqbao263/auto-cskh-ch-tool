@@ -485,6 +485,114 @@ async function openDeviceModalBySerial(page, masterData) {
   );
 }
 
+// Dò serial trong bảng thiết bị của FOLDER ĐANG MỞ. Trả true nếu tìm thấy
+// (modal đang mở đúng phương tiện); false nếu folder này không có serial.
+async function tryFindSerialInCurrentFolder(page, masterData) {
+  const targetSerial = normalizeSerial(masterData.serial_number);
+  if (!targetSerial) {
+    throw new Error("[Cau hinh] Thieu Serial Number de xac dinh dung phuong tien.");
+  }
+
+  const rows = page.locator(SEL_DEVICE_ROWS);
+  const rowCount = await rows.count();
+  if (!rowCount) {
+    console.log("    (folder khong co dong thiet bi nao)");
+    return false;
+  }
+  console.log(`    So dong thiet bi trong folder: ${rowCount}`);
+
+  for (let index = 0; index < rowCount; index += 1) {
+    const row = rows.nth(index);
+    const editIcon = row.locator(SEL_DEVICE_ROW_EDIT).first();
+    if (!(await editIcon.isVisible({ timeout: 2000 }).catch(() => false))) continue;
+
+    await editIcon.click({ timeout: 10000 });
+    await page.waitForTimeout(T.modal_open);
+    await waitForAny(page, SEL_MODAL_FORM1_READY, "modal Form 1 (Thong tin thiet bi)", 12000).catch(
+      () => {}
+    );
+
+    const modalSerial = await readOpenModalSerial(page).catch(() => "");
+    if (normalizeSerial(modalSerial) === targetSerial) {
+      console.log(`    Serial khop: ${modalSerial}. Dung phuong tien nay.`);
+      return true;
+    }
+    await closeDeviceModal(page);
+  }
+  return false;
+}
+
+// Duyệt TẤT CẢ folder khớp từ khóa (mã đầy đủ → cụm số), mở từng folder tìm serial.
+// Dừng ở folder đầu tiên có serial khớp; báo lỗi khi không folder nào có.
+async function findVehicleAcrossFolders(page, masterData) {
+  const terms = buildShipSearchTerms(masterData.ship_code);
+  if (!terms.length) {
+    throw new Error("[Cau hinh] Thieu ma tau de tim thu muc Viettel.");
+  }
+
+  const triedFolders = [];
+  for (const term of terms) {
+    console.log(`\n  [Nav 4-7] Tim kiem thu muc bang "${term}"...`);
+    await performGroupSearch(page, term);
+
+    const nodes = page.locator("a.jstree-anchor", { hasText: term });
+    const count = await nodes.count();
+    console.log(`  Tim thay ${count} folder khop "${term}".`);
+    if (!count) continue;
+
+    // Gom nhãn trước (DOM cây có thể đổi sau mỗi lần click).
+    const labels = [];
+    for (let i = 0; i < count; i += 1) {
+      const t = (await nodes.nth(i).innerText().catch(() => "")).replace(/\s+/g, " ").trim();
+      if (t && !labels.includes(t)) labels.push(t);
+    }
+
+    for (const label of labels) {
+      if (triedFolders.includes(label)) continue;
+      triedFolders.push(label);
+
+      console.log(`  → Mở folder "${label}"...`);
+      const node = page.locator("a.jstree-anchor", { hasText: label }).first();
+      await node.scrollIntoViewIfNeeded().catch(() => {});
+      const clicked = await node
+        .click({ timeout: 8000 })
+        .then(() => true)
+        .catch(() => false);
+      if (!clicked) {
+        console.log(`    Khong click duoc "${label}", bo qua.`);
+        continue;
+      }
+      await page.waitForTimeout(T.after_click);
+
+      // Tab "Thêm/xóa phương tiện" + chờ bảng thiết bị của folder này.
+      await clickButtonByFallback(page, SEL_TAB_THEM_XOA_PT, "Tab Thêm/xóa phương tiện", {
+        required: false,
+      });
+      await page.waitForTimeout(T.tab_switch);
+      const tableReady = await page
+        .locator(SEL_TABLE_THIET_BI_READY.join(", "))
+        .first()
+        .isVisible({ timeout: 8000 })
+        .catch(() => false);
+      if (!tableReady) {
+        console.log(`    Folder "${label}" chua hien bang thiet bi, bo qua.`);
+        continue;
+      }
+
+      if (await tryFindSerialInCurrentFolder(page, masterData)) {
+        console.log(`  ✅ Serial khớp trong folder "${label}" — modal đã mở đúng phương tiện.`);
+        return;
+      }
+      console.log(`    Serial khong co trong "${label}", thu folder khac...`);
+    }
+  }
+
+  throw new Error(
+    `[Cau hinh] Khong tim thay phuong tien co Serial "${masterData.serial_number}".\n` +
+      `Da thu cac folder: ${triedFolders.join(", ") || "(khong co folder khop)"}`
+  );
+}
+
 async function navigateToEditForm(page, masterData) {
   const shipCode = masterData.ship_code;
 
@@ -588,28 +696,8 @@ async function navigateToEditForm(page, masterData) {
   await waitForAny(page, SEL_PAGE_NHOM_READY, "trang Danh sách nhóm", 15000);
   console.log(`  ✔ Trang Danh sách nhóm đã tải. [Nav 3 hoàn tất]`);
 
-  const openedSearchTerm = await searchAndOpenShipFolder(page, masterData);
-  console.log(`  Da chon thu muc tau bang tu khoa "${openedSearchTerm}".`);
-
-  // [Nav 6] Tab "Thêm/xóa phương tiện"
-  console.log(`\n  [Nav 6/7] Click tab "Thêm/xóa phương tiện"...`);
-  await clickButtonByFallback(
-    page,
-    SEL_TAB_THEM_XOA_PT,
-    "Tab Thêm/xóa phương tiện"
-  );
-  await page.waitForTimeout(T.tab_switch);
-  await waitForAny(
-    page,
-    SEL_TABLE_THIET_BI_READY,
-    "bảng danh sách thiết bị",
-    10000
-  );
-  console.log(`  ✔ Tab và bảng thiết bị đã load.`);
-
-  // [Nav 7] Duyet tung dong, mo modal va kiem tra Serial truoc khi cau hinh
-  console.log(`\n  [Nav 7/7] Tim dung phuong tien theo Serial roi mo modal cau hinh...`);
-  await openDeviceModalBySerial(page, masterData);
+  // [Nav 4-7] Duyệt TẤT CẢ folder khớp từ khóa → tìm serial → mở đúng modal.
+  await findVehicleAcrossFolders(page, masterData);
   console.log(`  Modal da mo dung phuong tien - Form 1 san sang.`);
 
   console.log("\n  ✅ Navigation hoàn tất (7/7 bước).");
@@ -856,8 +944,17 @@ async function runCauhinh(page, masterData, testMode = false) {
       );
     }
     console.log("─".repeat(60));
-    await page.pause();
-    console.log("\n🧪 [Cấu hình] Đã resume. Kết thúc Test Mode.");
+    // page.pause() cần Playwright Inspector — KHÔNG có trong exe/worker →
+    // fallback: giữ browser mở một lúc để kiểm tra bằng mắt rồi tự đóng.
+    try {
+      await page.pause();
+      console.log("\n🧪 [Cấu hình] Đã resume. Kết thúc Test Mode.");
+    } catch (e) {
+      console.log(`\n🧪 [Cấu hình] Inspector không khả dụng (${e.message}).`);
+      console.log("🧪 [Cấu hình] Giữ browser mở 120s để kiểm tra rồi tự đóng...");
+      await page.waitForTimeout(120000).catch(() => {});
+      console.log("🧪 [Cấu hình] Hết thời gian kiểm tra. Kết thúc Test Mode.");
+    }
   } else {
     // ── PRODUCTION MODE: Lưu đã được click từng form ở Phase 2 ──────────────
     // Chỉ cần kiểm tra indicator thành công sau form5

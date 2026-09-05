@@ -140,7 +140,14 @@ async function insertCSKH(masterData, testMode = false) {
     : masterData.requester_phone ?? null;
 
   // ── 2. Tính toán thanh toán ───────────────────────────────────────────────
-  const monthsCount = Number(masterData.so_thang) || 1;
+  // "Thay tên đổi chủ" (category = "Chuyển đổi") cho phép 0 tháng và lưu đúng 0.
+  // Danh mục khác: 0/trống/không hợp lệ → mặc định 1.
+  const rawMonths = Number(masterData.so_thang);
+  const allowZeroMonth = masterData.category === "Chuyển đổi";
+  const monthsCount =
+    Number.isFinite(rawMonths) && rawMonths >= (allowZeroMonth ? 0 : 1)
+      ? rawMonths
+      : 1;
   const promotionType = masterData.loai_khuyen_mai || "none";
   const promotionValue = Number(masterData.gia_tri_khuyen_mai) || 0;
 

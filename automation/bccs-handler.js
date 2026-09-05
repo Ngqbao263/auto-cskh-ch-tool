@@ -784,49 +784,231 @@ async function setAutocompleteText(page, selector, value) {
   `);
 }
 
+// Chuẩn hóa tên VAS để so khớp (bỏ dấu, thường hóa).
+function normalizeVasName(s) {
+  return String(s || "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/đ/g, "d").replace(/Đ/g, "D")
+    .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+// Đọc option đang hiện trong panel autocomplete: [{index, code, name}].
+async function readAutocompleteOptions(page) {
+  return page.evaluate(`
+    (function(){
+      const panels = Array.from(document.querySelectorAll('.ui-autocomplete-panel'))
+        .filter(function(p){ const s = getComputedStyle(p); return s.display!=='none' && s.visibility!=='hidden'; });
+      for (const panel of panels) {
+        const rows = Array.from(panel.querySelectorAll('tr.ui-widget-content, li.ui-autocomplete-item, .ui-autocomplete-item'));
+        if (!rows.length) continue;
+        return rows.map(function(r, i){
+          const tds = Array.from(r.querySelectorAll('td'));
+          let code = '', name = '';
+          if (tds.length >= 2) {
+            code = (tds[0].textContent||'').trim();
+            name = tds.slice(1).map(function(td){ return (td.textContent||'').trim(); }).filter(Boolean).join(' ').trim();
+          } else {
+            const t = (r.textContent||'').trim();
+            const m = t.match(/^(\\S+)\\s+([\\s\\S]*)$/);
+            if (m) { code = m[1]; name = m[2].trim(); } else { name = t; }
+          }
+          return { index: i, code: code, name: name };
+        });
+      }
+      return [];
+    })()
+  `).catch(() => []);
+}
+
+// Click option theo index trong panel đang hiện.
+async function clickAutocompleteOptionByIndex(page, index) {
+  return page.evaluate(`
+    (function(idx){
+      const panels = Array.from(document.querySelectorAll('.ui-autocomplete-panel'))
+        .filter(function(p){ const s = getComputedStyle(p); return s.display!=='none' && s.visibility!=='hidden'; });
+      for (const panel of panels) {
+        const rows = Array.from(panel.querySelectorAll('tr.ui-widget-content, li.ui-autocomplete-item, .ui-autocomplete-item'));
+        if (rows[idx]) { rows[idx].click(); return true; }
+      }
+      return false;
+    })(${Number(index)})
+  `).catch(() => false);
+}
+
+// Click option theo MÃ (đọc TƯƠI tại thời điểm click → không lệ thuộc index cũ,
+// miễn nhiễm với việc panel bị render lại/đổi thứ tự giữa lúc đọc và lúc click).
+async function clickAutocompleteOptionByCode(page, code) {
+  const want = String(code || "").trim();
+  if (!want) return false;
+  return page.evaluate(`
+    (function(wantCode){
+      const panels = Array.from(document.querySelectorAll('.ui-autocomplete-panel'))
+        .filter(function(p){ const s = getComputedStyle(p); return s.display!=='none' && s.visibility!=='hidden'; });
+      for (const panel of panels) {
+        const rows = Array.from(panel.querySelectorAll('tr.ui-widget-content, li.ui-autocomplete-item, .ui-autocomplete-item'));
+        for (const r of rows) {
+          const tds = r.querySelectorAll('td');
+          const code = tds.length ? (tds[0].textContent||'').trim() : '';
+          if (code && code === wantCode) { r.click(); return true; }
+        }
+      }
+      return false;
+    })(${JSON.stringify(want)})
+  `).catch(() => false);
+}
+
+// Mở F9 + gõ value → ÉP search lọc đúng value rồi mới đọc option (poll tới khi có).
+async function openF9AndType(page, selector, value, { timeout = 12000 } = {}) {
+  await page.waitForSelector(selector, { timeout: 10000 });
+  await page.evaluate(`
+    (function(sel){
+      const el = document.querySelector(sel);
+      if (!el) return;
+      el.scrollIntoView({ block: 'center', inline: 'center' });
+      el.focus(); el.click(); el.value = '';
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    })(${JSON.stringify(selector)})
+  `);
+  await pressKey(page, "F9");
+  await sleep(300);
+  await setAutocompleteText(page, selector, value);
+
+  // Mỗi vòng: ép PrimeFaces search đúng value đã gõ → chờ panel LỌC + tải xong →
+  // đọc option. Poll tới khi có (danh sách cấp con có thể tải trễ qua AJAX cấp cha).
+  const deadline = Date.now() + timeout;
+  let opts = [];
+  while (Date.now() < deadline) {
+    await triggerPrimeFacesAutocompleteSearch(page, selector);
+    await sleep(800);
+    opts = await readAutocompleteOptions(page);
+    if (opts.length) break;
+  }
+  return opts;
+}
+
+// Dò field con có chứa giá trị cần điền không (không click, xóa lại sau khi dò).
+async function probeChildHasValue(page, childSelector, childValue) {
+  try {
+    const opts = await openF9AndType(page, childSelector, childValue, { timeout: 6000 });
+    const target = normalizeVasName(childValue);
+    const found = opts.some(function (o) {
+      const n = normalizeVasName(o.name);
+      return n === target || n.startsWith(target + " ");
+    });
+    await page.evaluate(`
+      (function(sel){ const el=document.querySelector(sel); if(el){ el.value=''; el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); } })(${JSON.stringify(childSelector)})
+    `).catch(() => {});
+    return found;
+  } catch {
+    return false;
+  }
+}
+
+// Đọc giá trị hiện tại của ô F9.
+async function readInputValue(page, selector) {
+  return page
+    .evaluate(`(document.querySelector(${JSON.stringify(selector)}) || {}).value || ''`)
+    .catch(() => "");
+}
+
+// Điền 1 cấp địa chỉ; nếu trùng tên nhiều bản → chọn bản mà field CON chứa giá trị cần điền.
+// Sau khi chọn xong ô hiển thị MÃ (khác chữ đã gõ) → dùng để XÁC NHẬN đã chọn, chưa được thì thử lại.
+async function fillF9Disambiguated(page, selector, value, label, childSelector, childValue) {
+  if (!value) {
+    console.log(`    - ${label}: empty, skip.`);
+    return;
+  }
+  const target = normalizeVasName(value);
+
+  // Đã chọn xong khi ô có giá trị và giá trị đó KHÁC chữ đã gõ (đã đổi thành mã).
+  const isSelected = async () => {
+    const v = String(await readInputValue(page, selector)).trim();
+    return !!v && normalizeVasName(v) !== target;
+  };
+
+  const pick = async (cand) => {
+    if (cand && cand.code && (await clickAutocompleteOptionByCode(page, cand.code))) return true;
+    return tryClickFirstAutocompleteOption(page, 5000);
+  };
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const opts = await openF9AndType(page, selector, value);
+    if (!opts.length) {
+      if (attempt >= 3) throw new Error(`No autocomplete option for ${label}: ${value}`);
+      await sleep(600);
+      continue;
+    }
+
+    const candidates = opts.filter((o) => normalizeVasName(o.name) === target);
+
+    // Trùng tên ≥2 bản + có con để phân biệt → dò con.
+    if (candidates.length >= 2 && childSelector && childValue) {
+      console.log(`    ~ ${label} "${value}" có ${candidates.length} bản trùng tên — dò theo con "${childValue}"...`);
+      let matched = null;
+      for (const cand of candidates) {
+        await openF9AndType(page, selector, value);
+        if (!(await clickAutocompleteOptionByCode(page, cand.code))) continue;
+        await sleep(T.ajax_wait);
+        if (!(await isSelected())) continue; // click chưa ăn → bỏ
+        if (await probeChildHasValue(page, childSelector, childValue)) {
+          matched = cand;
+          break;
+        }
+        console.log(`      • mã ${cand.code} không chứa con, thử bản khác...`);
+      }
+      if (matched) {
+        console.log(`    ok ${label}: ${value} (mã ${matched.code} — khớp con)`);
+        return;
+      }
+      // không bản nào khớp con → chọn bản đầu bên dưới
+    }
+
+    // 0/1 bản (hoặc dò con không ra) → chọn bản khớp tên / option đầu, rồi XÁC NHẬN.
+    await pick(candidates[0]);
+    await sleep(T.ajax_wait);
+    if (await isSelected()) {
+      console.log(`    ok ${label}: ${value}`);
+      return;
+    }
+    console.log(`    ~ ${label} "${value}" chọn chưa ăn — thử lại (${attempt}/3)...`);
+    await sleep(600);
+  }
+  throw new Error(`No autocomplete option for ${label}: ${value}`);
+}
+
 async function fillF9Autocomplete(page, selector, value, label) {
   if (!value) {
     console.log(`    - ${label}: empty, skip.`);
     return;
   }
+  const target = normalizeVasName(value);
+  const isSelected = async () => {
+    const v = String(await readInputValue(page, selector)).trim();
+    return !!v && normalizeVasName(v) !== target;
+  };
 
-  await page.waitForSelector(selector, { timeout: 10000 });
-  await page.evaluate(`
-    (function(sel) {
-      const el = document.querySelector(sel);
-      if (!el) return;
-      el.scrollIntoView({ block: 'center', inline: 'center' });
-      el.focus();
-      el.click();
-      el.value = '';
-      window.countF9 = 0;
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    })(${JSON.stringify(selector)})
-  `);
-
-  await pressKey(page, "F9");
-  await sleep(300);
-  await setAutocompleteText(page, selector, value);
-  const typedValue = await page.evaluate(`
-    (function(sel) {
-      return document.querySelector(sel)?.value || "";
-    })(${JSON.stringify(selector)})
-  `).catch(() => "");
-  if (!typedValue.trim()) {
-    throw new Error(`${label} input stayed empty after typing: ${selector}`);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const opts = await openF9AndType(page, selector, value);
+    if (!opts.length) {
+      if (attempt >= 3) throw new Error(`No autocomplete option for ${label}: ${value}`);
+      await sleep(600);
+      continue;
+    }
+    // Ưu tiên click theo mã của option khớp tên; fallback click option đầu (tươi).
+    const c = opts.filter((o) => normalizeVasName(o.name) === target)[0];
+    if (!(c && c.code && (await clickAutocompleteOptionByCode(page, c.code)))) {
+      await tryClickFirstAutocompleteOption(page, 5000);
+    }
+    await sleep(T.ajax_wait);
+    if (await isSelected()) {
+      console.log(`    ok ${label}: ${value}`);
+      return;
+    }
+    console.log(`    ~ ${label} "${value}" chọn chưa ăn — thử lại (${attempt}/3)...`);
+    await sleep(600);
   }
-  await sleep(T.dropdown);
-
-  let selected = await tryClickFirstAutocompleteOption(page, 2500);
-  if (!selected) {
-    await triggerPrimeFacesAutocompleteSearch(page, selector);
-    await sleep(T.dropdown);
-    selected = await tryClickFirstAutocompleteOption(page, 5000);
-  }
-  if (!selected) throw new Error(`No autocomplete option for ${label}: ${value}`);
-
-  console.log(`    ok ${label}: ${value}`);
+  throw new Error(`No autocomplete option for ${label}: ${value}`);
 }
 
 async function fillBccsAddressPopup(page, config, address) {
@@ -836,11 +1018,16 @@ async function fillBccsAddressPopup(page, config, address) {
   await sleep(T.ajax_wait);
   await verifyAddressPopupElements(page, config);
 
-  await fillF9Autocomplete(page, config.province, address.province, "Tinh/TP");
-  if (config.district && address.district) {
-    await fillF9Autocomplete(page, config.district, address.district, "Quan/Huyen");
+  // Con của mỗi cấp (để phân biệt khi trùng tên): Tỉnh→Huyện(hoặc Xã), Huyện→Xã, Xã→Tổ.
+  const hasDistrict = !!(config.district && address.district);
+  const provChildSel = hasDistrict ? config.district : config.precinct;
+  const provChildVal = hasDistrict ? address.district : address.precinct;
+
+  await fillF9Disambiguated(page, config.province, address.province, "Tinh/TP", provChildSel, provChildVal);
+  if (hasDistrict) {
+    await fillF9Disambiguated(page, config.district, address.district, "Quan/Huyen", config.precinct, address.precinct);
   }
-  await fillF9Autocomplete(page, config.precinct, address.precinct, "Phuong/Xa");
+  await fillF9Disambiguated(page, config.precinct, address.precinct, "Phuong/Xa", config.groupStreet, address.groupStreet);
   await fillF9Autocomplete(page, config.groupStreet, address.groupStreet, "To/Thon");
 
   if (config.street && address.street) {
@@ -1745,6 +1932,9 @@ async function fillDocumentSection(page, masterData) {
   console.log(`\n  ðŸ“Ž [BCCS] Cáº­p nháº­t há»“ sÆ¡ Ä‘Ã­nh kÃ¨m...`);
   let uploaded = 0;
 
+  // Chờ panel hồ sơ ổn định trước khi xử lý hàng đầu (BBNT hay bị trượt do vào sớm).
+  await sleep(1200);
+
   for (const slot of DOCUMENT_SLOTS) {
     const filePath = masterData[slot.key];
     if (!filePath) {
@@ -1756,7 +1946,15 @@ async function fillDocumentSection(page, masterData) {
     const selType = `[id$="${slot.index}:showUploadFileDocdocumentTypeCbx_input"]`;
 
     try {
-      await page.selectOption(selType, slot.type, { timeout: 8000 });
+      const curType = await page
+        .evaluate(`(document.querySelector(${JSON.stringify(selType)}) || {}).value || ''`)
+        .catch(() => "");
+      if (curType !== slot.type) {
+        // Đổi loại làm SFive render lại panel → chờ xong rồi mới đọc ô upload,
+        // tránh gán file vào input cũ đã bị thay (nguyên nhân BBNT trượt).
+        await page.selectOption(selType, slot.type, { timeout: 8000 });
+        await sleep(T.ajax_wait);
+      }
     } catch (err) {
       console.warn(`    âš ï¸  ${slot.label} â€” chá»n loáº¡i tháº¥t báº¡i: ${err.message}`);
     }
@@ -1764,7 +1962,7 @@ async function fillDocumentSection(page, masterData) {
     try {
       // Tìm id thật của ô upload cùng hàng: lấy prefix từ id thật của ô chọn loại,
       // rồi tìm input[type=file] có id bắt đầu bằng prefix đó (không phụ thuộc j_idt).
-      const fileInputId = await page.evaluate(`
+      const findFileInputId = () => page.evaluate(`
         (function(typeSel){
           const t = document.querySelector(typeSel);
           if (!t) return null;
@@ -1774,8 +1972,12 @@ async function fillDocumentSection(page, masterData) {
           return f ? f.id : null;
         })(${JSON.stringify(selType)})
       `).catch(() => null);
+      // Đọc id ô upload; nếu chưa thấy (panel còn render lại) → chờ rồi đọc lại.
+      let fileInputId = await findFileInputId();
+      if (!fileInputId) { await sleep(T.ajax_wait); fileInputId = await findFileInputId(); }
       if (!fileInputId) throw new Error("khong tim thay o upload file cua hang nay");
-      await page.setInputFiles(`[id="${fileInputId}"]`, filePath, { state: "attached" });
+      await page.setInputFiles(`[id="${fileInputId}"]`, filePath);
+      await sleep(T.ajax_wait); // chờ auto-upload lên server xong mới sang hàng kế
       console.log(`    âœ… ${slot.label}: ${path.basename(filePath)}`);
       uploaded++;
     } catch (err) {
