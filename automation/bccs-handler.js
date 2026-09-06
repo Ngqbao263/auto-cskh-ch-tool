@@ -1928,12 +1928,47 @@ async function fillPaymentSection(page, masterData) {
 // SECTION 5: Há»’ SÆ  ÄÃNH KÃˆM
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
+// Chờ mọi AJAX của PrimeFaces/jQuery hoàn tất (jQuery.active === 0) — biết chắc
+// auto-upload / đổi loại đã xong thật sự, thay cho sleep cố định dễ trượt.
+async function waitAjaxIdle(page, { timeout = 15000, quietMs = 400 } = {}) {
+  const start = Date.now();
+  let quietSince = null;
+  while (Date.now() - start < timeout) {
+    const active = await page
+      .evaluate(`(function(){try{return (window.jQuery && jQuery.active) || 0;}catch(e){return 0;}})()`)
+      .catch(() => 0);
+    if (!active) {
+      if (quietSince === null) quietSince = Date.now();
+      if (Date.now() - quietSince >= quietMs) return true;
+    } else {
+      quietSince = null;
+    }
+    await sleep(150);
+  }
+  return false;
+}
+
+// Kiem tra file da duoc nhan chua: sau khi upload, BCCS hien TEN FILE (chinh la
+// ten file minh vua gan) trong panel ho so. Moi file co ten RIENG (duy nhat), nen
+// chi can tim thay dung ten do la biet da nhan — KHONG phu thuoc ten co chua "bbnt".
+async function docFileShown(page, fileName) {
+  if (!fileName) return false;
+  return page.evaluate(`
+    (function(needle){
+      const t = (document.body && document.body.innerText) || '';
+      return t.indexOf(needle) >= 0;
+    })(${JSON.stringify(fileName)})
+  `).catch(() => false);
+}
+
 async function fillDocumentSection(page, masterData) {
   console.log(`\n  ðŸ“Ž [BCCS] Cáº­p nháº­t há»“ sÆ¡ Ä‘Ã­nh kÃ¨m...`);
   let uploaded = 0;
+  const expected = DOCUMENT_SLOTS.filter((s) => masterData[s.key]).length;
 
   // Chờ panel hồ sơ ổn định trước khi xử lý hàng đầu (BBNT hay bị trượt do vào sớm).
-  await sleep(1200);
+  await sleep(800);
+  await waitAjaxIdle(page, { timeout: 8000 });
 
   for (const slot of DOCUMENT_SLOTS) {
     const filePath = masterData[slot.key];
@@ -1944,6 +1979,7 @@ async function fillDocumentSection(page, masterData) {
 
     // Đuôi ổn định (index + tên component) — miễn nhiễm j_idt tự sinh của prefix.
     const selType = `[id$="${slot.index}:showUploadFileDocdocumentTypeCbx_input"]`;
+    const baseName = path.basename(filePath);
 
     try {
       const curType = await page
@@ -1953,8 +1989,17 @@ async function fillDocumentSection(page, masterData) {
         // Đổi loại làm SFive render lại panel → chờ xong rồi mới đọc ô upload,
         // tránh gán file vào input cũ đã bị thay (nguyên nhân BBNT trượt).
         await page.selectOption(selType, slot.type, { timeout: 8000 });
-        await sleep(T.ajax_wait);
+        await waitAjaxIdle(page, { timeout: 10000 });
       }
+      // EP chon lai loai LAN NUA de bao dam PrimeFaces init widget upload cua hang
+      // (ke ca khi loai da dung san). Day la ly do BBNT dong dau truoc day bi bo qua:
+      // loai mac dinh DA la BBNT nen khong selectOption -> widget upload chua kich hoat.
+      await page.selectOption(selType, slot.type, { timeout: 8000 }).catch(() => {});
+      await waitAjaxIdle(page, { timeout: 10000 });
+      // QUAN TRONG: cho them mot chut de PrimeFaces gan LAI change-listener cho o
+      // upload sau khi render lai. Neu set file qua som -> upload khong chay -> BBNT
+      // "lan dau bi truot, lan 2 moi nhan" chinh la vi thieu do tre nay.
+      await sleep(700);
     } catch (err) {
       console.warn(`    âš ï¸  ${slot.label} â€” chá»n loáº¡i tháº¥t báº¡i: ${err.message}`);
     }
@@ -1974,10 +2019,28 @@ async function fillDocumentSection(page, masterData) {
       `).catch(() => null);
       // Đọc id ô upload; nếu chưa thấy (panel còn render lại) → chờ rồi đọc lại.
       let fileInputId = await findFileInputId();
-      if (!fileInputId) { await sleep(T.ajax_wait); fileInputId = await findFileInputId(); }
+      if (!fileInputId) { await waitAjaxIdle(page); fileInputId = await findFileInputId(); }
       if (!fileInputId) throw new Error("khong tim thay o upload file cua hang nay");
       await page.setInputFiles(`[id="${fileInputId}"]`, filePath);
-      await sleep(T.ajax_wait); // chờ auto-upload lên server xong mới sang hàng kế
+      // Chờ AJAX auto-upload xong HẲN (jQuery.active=0) thay cho sleep cố định —
+      // nguyên nhân BBNT "chưa có file upload" là upload chưa kịp hoàn tất.
+      await waitAjaxIdle(page, { timeout: 20000 });
+      // XAC MINH da nhan file: BCCS hien dung TEN FILE minh vua gan sau khi upload.
+      let ok = await docFileShown(page, baseName);
+      if (!ok) { await sleep(1500); ok = await docFileShown(page, baseName); }
+      // Thu lai toi da 3 lan: moi lan RE-INIT widget (chon lai loai) + do tre roi
+      // gan lai file. Day chinh la thao tac "chay lan 2" nhung gom vao trong 1 lan.
+      for (let r = 1; r <= 3 && !ok; r++) {
+        await page.selectOption(selType, slot.type, { timeout: 8000 }).catch(() => {});
+        await waitAjaxIdle(page, { timeout: 10000 });
+        await sleep(700);
+        const fidR = await findFileInputId();
+        if (fidR) await page.setInputFiles(`[id="${fidR}"]`, filePath).catch(() => {});
+        await waitAjaxIdle(page, { timeout: 20000 });
+        ok = await docFileShown(page, baseName);
+        if (!ok) await sleep(1200);
+      }
+      if (!ok) throw new Error("hang chua nhan file sau upload (verify fail)");
       console.log(`    âœ… ${slot.label}: ${path.basename(filePath)}`);
       uploaded++;
     } catch (err) {
@@ -1986,6 +2049,11 @@ async function fillDocumentSection(page, masterData) {
   }
 
   console.log(`    ðŸ“Š ÄÃ£ upload: ${uploaded}/${DOCUMENT_SLOTS.length} file.`);
+  // Co file nhung upload khong thanh -> DUNG som, tranh bam Dau noi roi bi BCCS
+  // tra "[SALE...] Chung tu ... chua co file upload".
+  if (uploaded < expected) {
+    throw new Error(`Upload ho so that bai (${uploaded}/${expected} file). Da dung de tranh dau noi thieu chung tu.`);
+  }
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -2130,14 +2198,23 @@ async function handleBillingViaBridge(page, testMode, billing) {
 
   const ask =
     billing ||
-    (async (v) => {
-      const res = await billingBridge.waitForBilling({ value: v, testMode }, 3 * 60 * 1000);
-      return { value: res && res.value != null ? res.value : v };
-    });
+    ((v) => billingBridge.waitForBilling({ value: v, testMode }, 10 * 60 * 1000));
 
   let res;
-  try { res = await ask(current); } catch (e) { console.warn(`  ⚠️  [BCCS] Sửa địa chỉ lỗi: ${e.message}`); return; }
-  const finalVal = res && res.value != null ? String(res.value) : current;
+  try {
+    res = await ask(current);
+  } catch (e) {
+    // Lỗi khi chờ xác nhận → coi như CHƯA xác nhận, KHÔNG tự sang captcha.
+    throw new Error(`Chưa xác nhận Địa chỉ hóa đơn cước (lỗi: ${e.message}) — đã dừng.`);
+  }
+
+  // BẮT BUỘC người dùng XÁC NHẬN mới đi tiếp. Hết giờ / hủy (confirmed !== true)
+  // → DỪNG luồng, KHÔNG tự chuyển sang captcha (đúng yêu cầu người dùng).
+  if (!res || res.confirmed !== true) {
+    throw new Error("Chưa xác nhận Địa chỉ hóa đơn cước — đã dừng, không tự chuyển sang captcha.");
+  }
+
+  const finalVal = res.value != null ? String(res.value) : current;
 
   if (finalVal.trim() && finalVal !== current) {
     try {

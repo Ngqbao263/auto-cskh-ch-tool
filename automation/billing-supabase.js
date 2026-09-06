@@ -15,7 +15,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function makeSupabaseBilling(supabase, jobId, opts = {}) {
   const pollMs = opts.pollMs ?? 2500;
-  const timeoutMs = opts.timeoutMs ?? 180000; // 3 phút chờ người sửa
+  // BẮT BUỘC người dùng xác nhận địa chỉ mới qua captcha → nới thời gian chờ (10 phút),
+  // hết giờ mà chưa xác nhận thì KHÔNG tự đi tiếp (confirmed=false → bccs-handler dừng).
+  const timeoutMs = opts.timeoutMs ?? 600000;
 
   return async function billing(currentValue) {
     const { error: upErr } = await supabase
@@ -24,9 +26,9 @@ function makeSupabaseBilling(supabase, jobId, opts = {}) {
       .eq("id", jobId);
     if (upErr) {
       console.warn(`  ⚠️  [billing] Không đẩy được địa chỉ lên job: ${upErr.message}`);
-      return { value: currentValue };
+      return { value: currentValue, confirmed: false };
     }
-    console.log(`  📤 [billing] Đã đẩy "Địa chỉ hóa đơn cước" lên điện thoại, chờ sửa...`);
+    console.log(`  📤 [billing] Đã đẩy "Địa chỉ hóa đơn cước" lên điện thoại, chờ XÁC NHẬN...`);
 
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
@@ -40,21 +42,22 @@ function makeSupabaseBilling(supabase, jobId, opts = {}) {
         console.warn(`  ⚠️  [billing] Lỗi poll: ${error.message}`);
         continue;
       }
-      if (!data) return { value: currentValue }; // job biến mất → giữ nguyên
+      if (!data) return { value: currentValue, confirmed: false, cancelled: true }; // job biến mất
       if (data.status === "billing_submitted") {
         const val = data.billing_answer != null ? data.billing_answer : currentValue;
         await supabase
           .from("automation_jobs")
           .update({ status: "running", billing_answer: null })
           .eq("id", jobId);
-        console.log(`  📥 [billing] Nhận địa chỉ đã sửa từ điện thoại.`);
-        return { value: val };
+        console.log(`  📥 [billing] Người dùng đã XÁC NHẬN địa chỉ.`);
+        return { value: val, confirmed: true };
       }
-      if (data.status === "error" || data.status === "done") return { value: currentValue };
+      if (data.status === "error" || data.status === "done")
+        return { value: currentValue, confirmed: false, cancelled: true };
     }
 
-    console.warn(`  ⏱  [billing] Hết thời gian chờ sửa — giữ nguyên giá trị BCCS.`);
-    return { value: currentValue };
+    console.warn(`  ⏱  [billing] Hết thời gian chờ XÁC NHẬN địa chỉ — KHÔNG tự sang captcha.`);
+    return { value: currentValue, confirmed: false };
   };
 }
 

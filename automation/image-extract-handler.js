@@ -36,7 +36,7 @@ const DEFAULT_MODEL = "gpt-5-mini";
 // Định nghĩa slot: docType + mô tả để dựng prompt
 // ─────────────────────────────────────────────────────────────────────────────
 const SLOT_DEFS = {
-  device: "Ảnh chụp màn hình 'THÔNG TIN THIẾT BỊ' của app. Dòng 'Tên:' chính là serial_number của thiết bị.",
+  device: "Ảnh THIẾT BỊ giám sát — có thể là (a) ảnh chụp màn hình 'THÔNG TIN THIẾT BỊ' của app: dòng 'Tên:' là serial_number; HOẶC (b) ảnh chụp TEM/NHÃN dán trên thiết bị: dòng 'S/N:' (Serial Number) là serial_number. Serial thường bắt đầu bằng 'MTR' và dài 16 ký tự.",
   cccd_front:
     "CCCD/Căn cước mặt TRƯỚC của CHỦ TÀU: số định danh cá nhân, họ tên, ngày sinh, giới tính, quốc tịch.",
   cccd_back:
@@ -101,7 +101,7 @@ function buildSystemPrompt() {
     "3. Giới tính: quy về mã 1 ký tự — 'T'=Nam, 'G'=Nữ, 'U'=không xác định.",
     "4. owner_loai_ma_so theo độ dài số giấy tờ: 9 chữ số → '1' (CMND); 12 chữ số → '2' (CCCD).",
     "5. Số công suất/kích thước: chỉ lấy phần SỐ (vd '630CV' → '630', '65.06 TĐK' → '65.06'). Giữ nguyên dấu chấm thập phân.",
-    "6. serial_number: lấy từ dòng 'Tên:' trên ảnh slot 'device'.",
+    "6. serial_number: lấy từ dòng 'Tên:' (ảnh chụp màn hình app) HOẶC dòng 'S/N:'/'Serial' trên tem dán thiết bị (ảnh slot 'device'). Serial thường dạng 'MTR...' dài 16 ký tự — lấy ĐÚNG chuỗi mã, bỏ khoảng trắng. Vd tem ghi 'S/N: MTR032026D005583' → serial_number = 'MTR032026D005583'.",
     "7. Số đăng ký tàu (vd 'QNg-97280-TS') điền vào CẢ ship_code VÀ bien_so_tau.",
     "8. Địa chỉ chủ tàu: ƯU TIÊN đọc từ CCCD (mặt sau) vì mới nhất. Tách:",
     "   owner_address_province = tỉnh/thành; owner_address_precinct = phường/xã;",

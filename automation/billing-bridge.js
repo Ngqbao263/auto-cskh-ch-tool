@@ -28,7 +28,7 @@ function waitForBilling({ value, testMode } = {}, timeoutMs = 180000) {
     const timer = setTimeout(() => {
       if (session && session.id === id) {
         session = null;
-        resolve({ value }); // hết giờ → giữ nguyên
+        resolve({ value, confirmed: false }); // hết giờ → CHƯA xác nhận
       }
     }, timeoutMs);
     session = {
@@ -55,7 +55,7 @@ function answer(id, value) {
     const resolve = session.resolve;
     const original = session.value;
     session = null;
-    resolve({ value: value == null ? original : String(value) });
+    resolve({ value: value == null ? original : String(value), confirmed: true });
     return true;
   }
   return false;
@@ -67,7 +67,7 @@ function clear() {
     const resolve = session.resolve;
     const original = session.value;
     session = null;
-    resolve({ value: original });
+    resolve({ value: original, confirmed: false, cancelled: true });
   }
 }
 
